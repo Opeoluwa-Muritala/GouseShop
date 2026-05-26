@@ -9,6 +9,16 @@ __pycache__/
 .coverage
 htmlcov/
 
+# Node / frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+.npm-cache/
+**/.npm-cache/
+
 # Virtual environments
 .venv/
 venv/
@@ -18,8 +28,10 @@ env/
 .env
 .env.*
 Backend/.env
+Frontend/.env
 !.env.example
 !Backend/.env.example
+!Frontend/.env.example
 
 # Local databases
 *.db
