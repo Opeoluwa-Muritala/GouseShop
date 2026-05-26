@@ -97,8 +97,8 @@ class ProductImage(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    url: Mapped[str] = mapped_column(String(255), nullable=False)
-    secure_url: Mapped[str] = mapped_column(String(255), nullable=True)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    secure_url: Mapped[str] = mapped_column(String(500), nullable=True)
     public_id: Mapped[str] = mapped_column(String(255), nullable=True)
     alt: Mapped[str] = mapped_column(String(255), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

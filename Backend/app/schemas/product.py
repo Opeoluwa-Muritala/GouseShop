@@ -25,6 +25,10 @@ class ProductImageRead(BaseModel):
     alt: Optional[str]
     sort_order: int
     is_primary: bool
+    width: Optional[int] = None
+    height: Optional[int] = None
+    format: Optional[str] = None
+    resource_type: Optional[str] = None
 
 
 class ProductBase(BaseModel):

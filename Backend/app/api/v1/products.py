@@ -1,9 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.schemas.product import ProductCreate, ProductList, ProductRead, ProductUpdate
-from app.services.product_service import create_product, get_product_by_slug, list_products, update_product
+from app.schemas.product import ProductCreate, ProductImageRead, ProductList, ProductRead, ProductUpdate
+from app.services.product_service import (
+    add_product_image,
+    create_product,
+    delete_product_image,
+    get_product_by_slug,
+    get_product_image,
+    list_products,
+    update_product,
+)
 from app.api.v1.deps import require_admin
 
 router = APIRouter()
@@ -100,3 +108,36 @@ async def admin_update_product(slug: str, data: ProductUpdate, session: AsyncSes
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     return await update_product(session, product, data)
+
+
+@router.post("/admin/{slug}/images", response_model=ProductImageRead, dependencies=[Depends(require_admin)])
+async def admin_upload_product_image(
+    slug: str,
+    file: UploadFile = File(...),
+    alt: str | None = Form(None),
+    sort_order: int = Form(0),
+    is_primary: bool = Form(False),
+    session: AsyncSession = Depends(get_session),
+):
+    product = await get_product_by_slug(session, slug)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    content = await file.read()
+    return await add_product_image(
+        session,
+        product,
+        filename=file.filename or "product-image",
+        content_type=file.content_type or "",
+        content=content,
+        alt=alt,
+        sort_order=sort_order,
+        is_primary=is_primary,
+    )
+
+
+@router.delete("/admin/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+async def admin_delete_product_image(image_id: int, session: AsyncSession = Depends(get_session)):
+    image = await get_product_image(session, image_id)
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+    await delete_product_image(session, image)

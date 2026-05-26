@@ -33,6 +33,6 @@ class InMemoryRedis:
 
 redis_client = (
     InMemoryRedis()
-    if settings.use_fake_external_services
+    if settings.use_fake_external_services or settings.use_fake_redis
     else redis.from_url(settings.redis_url, decode_responses=True)
 )

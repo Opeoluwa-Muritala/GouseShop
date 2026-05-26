@@ -3,8 +3,9 @@ from typing import Optional
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.catalog import Category, Collection, Fabric, Product, ProductCollection
+from app.models.catalog import Category, Collection, Fabric, Product, ProductCollection, ProductImage
 from app.schemas.product import ProductCreate, ProductUpdate
+from app.services.cloudinary_service import delete_image_if_configured, upload_image
 
 
 async def get_product_by_slug(session: AsyncSession, slug: str) -> Optional[Product]:
@@ -132,3 +133,46 @@ async def update_product(session: AsyncSession, product: Product, data: ProductU
     await session.commit()
     await session.refresh(product)
     return product
+
+
+async def add_product_image(
+    session: AsyncSession,
+    product: Product,
+    filename: str,
+    content_type: str,
+    content: bytes,
+    alt: str | None = None,
+    sort_order: int = 0,
+    is_primary: bool = False,
+) -> ProductImage:
+    uploaded = await upload_image(filename, content_type, content)
+    if is_primary:
+        for image in product.images:
+            image.is_primary = False
+    image = ProductImage(
+        product_id=product.id,
+        url=uploaded["url"],
+        secure_url=uploaded.get("secure_url"),
+        public_id=uploaded.get("public_id"),
+        alt=alt,
+        sort_order=sort_order,
+        is_primary=is_primary,
+        width=uploaded.get("width"),
+        height=uploaded.get("height"),
+        format=uploaded.get("format"),
+        resource_type=uploaded.get("resource_type"),
+    )
+    session.add(image)
+    await session.commit()
+    await session.refresh(image)
+    return image
+
+
+async def delete_product_image(session: AsyncSession, image: ProductImage) -> None:
+    await delete_image_if_configured(image.public_id)
+    await session.delete(image)
+    await session.commit()
+
+
+async def get_product_image(session: AsyncSession, image_id: int) -> ProductImage | None:
+    return await session.get(ProductImage, image_id)
