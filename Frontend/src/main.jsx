@@ -25,18 +25,40 @@ function App() {
   const [pagination, setPagination] = useState({ limit: 24, offset: 0, total: 0 });
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   useEffect(() => {
-    loadProducts(0);
     loadCategories();
     loadCart();
   }, []);
 
+  useEffect(() => {
+    loadProducts(0);
+  }, [filter, query]);
+
+  function productParams(nextOffset) {
+    const params = new URLSearchParams({
+      limit: String(pagination.limit),
+      offset: String(nextOffset),
+    });
+
+    if (query.trim()) params.set("q", query.trim());
+    if (filter === "new") params.set("new_arrival", "true");
+    if (filter === "sale") params.set("sale", "true");
+    if (filter === "women") params.set("gender", "women");
+    if (filter === "men") params.set("gender", "men");
+    if (filter === "children") params.set("gender", "kids");
+    if (filter === "featured") params.set("featured", "true");
+    if (filter.startsWith("category:")) params.set("category", filter.replace("category:", ""));
+
+    return params.toString();
+  }
+
   async function loadProducts(nextOffset = pagination.offset) {
     setLoading(true);
     try {
-      const data = await api(`/products/?limit=${pagination.limit}&offset=${nextOffset}`);
-      setProducts(data.items?.length ? data.items : fallbackProducts);
+      const data = await api(`/products/?${productParams(nextOffset)}`);
+      setProducts(data.items || []);
       setApiState(data.items?.length ? "live" : "empty");
       setPagination((current) => ({
         ...current,
@@ -75,17 +97,12 @@ function App() {
     return map;
   }, [products]);
 
-  const visibleProducts = products.filter((product) => {
-    const matchesQuery = `${product.name} ${product.description || ""}`.toLowerCase().includes(query.toLowerCase());
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "new" && product.is_new_arrival) ||
-      (filter === "featured" && product.is_featured) ||
-      (filter === "sale" && product.is_sale) ||
-      (filter === "men" && product.gender === "men") ||
-      (filter === "women" && product.gender === "women");
-    return matchesQuery && matchesFilter;
-  });
+  function selectFilter(nextFilter) {
+    setSelectedProduct(null);
+    setFilter(nextFilter);
+    setPagination((current) => ({ ...current, offset: 0 }));
+    requestAnimationFrame(() => document.getElementById("shop")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   async function addToCart(product, variantId) {
     const variant = product.variants?.find((item) => item.id === variantId) || product.variants?.[0];
@@ -120,8 +137,11 @@ function App() {
   }
 
   async function createOrderAndPay(provider) {
+    if (checkoutBusy) return;
+    setCheckoutBusy(true);
     try {
       const order = await api("/orders/", { method: "POST", body: "{}" });
+      await loadCart();
       const payment = await api("/payments/initiate", {
         method: "POST",
         body: JSON.stringify({ order_id: order.id, provider, country: "NG", currency: order.currency || "NGN" }),
@@ -129,6 +149,8 @@ function App() {
       if (payment.provider_checkout_url) window.location.href = payment.provider_checkout_url;
     } catch (error) {
       setStatus(error.message);
+    } finally {
+      setCheckoutBusy(false);
     }
   }
 
@@ -139,9 +161,10 @@ function App() {
     <>
       <Header
         cartCount={cartCount}
+        filter={filter}
         setAuthOpen={setAuthOpen}
         setDrawerOpen={setDrawerOpen}
-        setFilter={setFilter}
+        setFilter={selectFilter}
         setMobileNavOpen={setMobileNavOpen}
         goHome={() => setSelectedProduct(null)}
       />
@@ -149,13 +172,12 @@ function App() {
         {!selectedProduct ? (
           <ShopPage
             loading={loading}
-            products={visibleProducts}
+            products={products}
             query={query}
             setQuery={setQuery}
             filter={filter}
-            setFilter={setFilter}
+            setFilter={selectFilter}
             categories={categories}
-            apiState={apiState}
             pagination={pagination}
             onPageChange={loadProducts}
             onSelectProduct={setSelectedProduct}
@@ -173,10 +195,11 @@ function App() {
         cartTotal={cartTotal}
         updateCartItem={updateCartItem}
         createOrderAndPay={createOrderAndPay}
+        checkoutBusy={checkoutBusy}
         openAuth={() => setAuthOpen(true)}
       />
       <AuthModal open={authOpen} setOpen={setAuthOpen} setStatus={setStatus} reloadCart={loadCart} />
-      <MobileNav open={mobileNavOpen} setOpen={setMobileNavOpen} setFilter={setFilter} />
+      <MobileNav open={mobileNavOpen} setOpen={setMobileNavOpen} setFilter={selectFilter} categories={categories} />
       {status && <Toast message={status} onClose={() => setStatus("")} />}
     </>
   );

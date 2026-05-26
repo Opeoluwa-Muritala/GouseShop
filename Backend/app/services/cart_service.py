@@ -1,6 +1,7 @@
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cart import Cart, CartItem
@@ -44,11 +45,8 @@ async def add_item_to_cart(session: AsyncSession, cart: Cart, variant_id: int, q
     if variant.stock_qty - variant.reserved_qty < quantity:
         raise ValueError("Insufficient inventory")
 
-    item = None
-    for existing in cart.items:
-        if existing.variant_id == variant_id:
-            item = existing
-            break
+    result = await session.execute(select(CartItem).where(CartItem.cart_id == cart.id, CartItem.variant_id == variant_id))
+    item = result.scalar_one_or_none()
 
     if item:
         if variant.stock_qty - variant.reserved_qty < item.quantity + quantity:
@@ -64,7 +62,14 @@ async def add_item_to_cart(session: AsyncSession, cart: Cart, variant_id: int, q
         )
         cart.items.append(item)
 
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        result = await session.execute(select(CartItem).where(CartItem.cart_id == cart.id, CartItem.variant_id == variant_id))
+        item = result.scalar_one()
+        item.quantity += quantity
+        await session.commit()
     await session.refresh(item)
     await session.refresh(cart)
     return item

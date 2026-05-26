@@ -1,4 +1,5 @@
 import { ProductCard } from "../components/ProductCard";
+import { SafeImage } from "../components/SafeImage";
 import { ShopControls } from "../components/ShopControls";
 
 export function ShopPage({
@@ -9,7 +10,6 @@ export function ShopPage({
   filter,
   setFilter,
   categories,
-  apiState,
   pagination,
   onPageChange,
   onSelectProduct,
@@ -18,7 +18,6 @@ export function ShopPage({
   return (
     <>
       <Hero setFilter={setFilter} />
-      <ApiStatus apiState={apiState} />
       <ShopControls query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} />
       <CategoryRail categories={categories} />
       <section className="product-grid-section" id="shop">
@@ -66,22 +65,6 @@ function Pagination({ pagination, loading, onPageChange }) {
   );
 }
 
-function ApiStatus({ apiState }) {
-  const label = {
-    connecting: "Connecting to catalog API",
-    live: "Live catalog API",
-    empty: "API connected, catalog empty",
-    offline: "Preview catalog",
-  }[apiState];
-
-  return (
-    <section className={`api-status ${apiState}`}>
-      <span />
-      {label}
-    </section>
-  );
-}
-
 function CategoryRail({ categories }) {
   if (!categories?.length) return null;
   return (
@@ -98,8 +81,8 @@ function CategoryRail({ categories }) {
 function Hero({ setFilter }) {
   return (
     <section className="hero">
-      <img
-        src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1800&q=85"
+      <SafeImage
+        src="https://images.pexels.com/photos/994523/pexels-photo-994523.jpeg?auto=compress&cs=tinysrgb&w=1800"
         alt="Fashion editorial collection"
       />
       <div className="hero-copy">
@@ -121,7 +104,7 @@ function EditorialBand() {
         <p>Made for movement</p>
         <h2>The shop edit balances soft structure, high contrast, and polished everyday wear.</h2>
       </div>
-      <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85" alt="Runway-inspired styling" />
+      <SafeImage src="https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Runway-inspired styling" />
     </section>
   );
 }

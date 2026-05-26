@@ -1,6 +1,14 @@
 import { Menu, Search, ShoppingBag, User } from "lucide-react";
 
-export function Header({ cartCount, setAuthOpen, setDrawerOpen, setFilter, setMobileNavOpen, goHome }) {
+export function Header({ cartCount, filter, setAuthOpen, setDrawerOpen, setFilter, setMobileNavOpen, goHome }) {
+  const links = [
+    ["new", "New"],
+    ["women", "Women"],
+    ["men", "Men"],
+    ["children", "Children"],
+    ["sale", "Sale"],
+  ];
+
   return (
     <header className="site-header">
       <div className="announce">New ceremonial pieces now available. Worldwide delivery from Lagos.</div>
@@ -10,8 +18,8 @@ export function Header({ cartCount, setAuthOpen, setDrawerOpen, setFilter, setMo
         </button>
         <button className="brand" onClick={goHome}>GouseShop</button>
         <div className="nav-links">
-          {["new", "women", "men", "sale"].map((item) => (
-            <button key={item} onClick={() => setFilter(item)}>{item}</button>
+          {links.map(([value, label]) => (
+            <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{label}</button>
           ))}
         </div>
         <div className="nav-actions">

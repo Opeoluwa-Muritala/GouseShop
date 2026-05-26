@@ -93,6 +93,12 @@ img {
   width: 100%;
 }
 
+.primary-action:disabled,
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }

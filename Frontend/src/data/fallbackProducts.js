@@ -10,7 +10,7 @@ export const fallbackProducts = [
     is_featured: true,
     is_new_arrival: true,
     variants: [{ id: 9001, sku: "ARI-XS", size: "XS", color: "Ivory", color_hex: "#f6eee2", stock_qty: 8, reserved_qty: 0, additional_price: 0 }],
-    images: [{ secure_url: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=85", alt: "Woman browsing tailored clothing" }],
+    images: [{ secure_url: "https://images.pexels.com/photos/994523/pexels-photo-994523.jpeg?auto=compress&cs=tinysrgb&w=1200", alt: "Woman browsing tailored clothing" }],
   },
   {
     id: 102,
@@ -21,7 +21,7 @@ export const fallbackProducts = [
     gender: "women",
     is_bestseller: true,
     variants: [{ id: 9002, sku: "NARA-M", size: "M", color: "Black", color_hex: "#111111", stock_qty: 6, reserved_qty: 0, additional_price: 0 }],
-    images: [{ secure_url: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1200&q=85", alt: "Editorial black dress" }],
+    images: [{ secure_url: "https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg?auto=compress&cs=tinysrgb&w=1200", alt: "Editorial black dress" }],
   },
   {
     id: 103,
@@ -32,7 +32,7 @@ export const fallbackProducts = [
     gender: "unisex",
     is_sale: true,
     variants: [{ id: 9003, sku: "ORO-L", size: "L", color: "Olive", color_hex: "#69715d", stock_qty: 10, reserved_qty: 0, additional_price: 0 }],
-    images: [{ secure_url: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85", alt: "Layered fashion editorial" }],
+    images: [{ secure_url: "https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=1200", alt: "Layered fashion editorial" }],
   },
   {
     id: 104,
@@ -43,6 +43,6 @@ export const fallbackProducts = [
     gender: "men",
     is_featured: true,
     variants: [{ id: 9004, sku: "EKO-M", size: "M", color: "White", color_hex: "#f8f7f2", stock_qty: 12, reserved_qty: 0, additional_price: 0 }],
-    images: [{ secure_url: "https://images.unsplash.com/photo-1516826957135-700dedea698c?auto=format&fit=crop&w=1200&q=85", alt: "Mens linen shirt" }],
+    images: [{ secure_url: "https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=1200", alt: "Mens linen shirt" }],
   },
 ];

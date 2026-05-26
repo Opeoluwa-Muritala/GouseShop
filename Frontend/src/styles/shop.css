@@ -67,32 +67,6 @@
   border-bottom: 1px solid var(--line);
 }
 
-.api-status {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 28px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.api-status span {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--gold);
-}
-
-.api-status.live span {
-  background: #2e8b57;
-}
-
-.api-status.offline span {
-  background: var(--clay);
-}
-
 .category-rail {
   display: flex;
   gap: 10px;

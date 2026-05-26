@@ -56,6 +56,62 @@ CATEGORIES = [
         "gender": Gender.UNISEX,
         "styles": ["Utility Jacket", "Cropped Blazer", "Long Coat", "Kimono Jacket", "Field Jacket"],
     },
+    {
+        "name": "Menswear",
+        "slug": "menswear",
+        "description": "Tailored shirts, relaxed sets, and clean everyday pieces for men.",
+        "query": "menswear,shirt,trouser,model",
+        "gender": Gender.MEN,
+        "styles": ["Tailored Shirt", "Resort Shirt", "Structured Set", "Linen Tunic", "Utility Overshirt"],
+    },
+    {
+        "name": "Womenswear",
+        "slug": "womenswear",
+        "description": "Dresses, sets, separates, and polished everyday pieces for women.",
+        "query": "womenswear,dress,set,model",
+        "gender": Gender.WOMEN,
+        "styles": ["Bias Dress", "Draped Blouse", "Tailored Set", "Soft Trouser", "Occasion Top"],
+    },
+    {
+        "name": "Children",
+        "slug": "children",
+        "description": "Easy occasion pieces, soft sets, and polished everyday clothing for children.",
+        "query": "kidswear,children,clothing",
+        "gender": Gender.KIDS,
+        "styles": ["Play Set", "Cotton Shirt", "Occasion Dress", "Soft Trouser", "Layered Jacket"],
+    },
+    {
+        "name": "Shirts",
+        "slug": "shirts",
+        "description": "Button-downs, relaxed collars, and crisp shirting staples.",
+        "query": "fashion,shirt,model",
+        "gender": Gender.MEN,
+        "styles": ["Camp Shirt", "Oxford Shirt", "Linen Shirt", "Pleated Shirt", "Short Sleeve Shirt"],
+    },
+    {
+        "name": "Trousers",
+        "slug": "trousers",
+        "description": "Clean trousers, wide-leg pants, and tailored bottoms.",
+        "query": "fashion,trousers,pants,model",
+        "gender": Gender.MEN,
+        "styles": ["Wide Trouser", "Tapered Trouser", "Pleated Pant", "Drawstring Pant", "Cargo Pant"],
+    },
+    {
+        "name": "Knitwear",
+        "slug": "knitwear",
+        "description": "Soft layers, ribbed tanks, polos, and lightweight knits.",
+        "query": "fashion,knitwear,model",
+        "gender": Gender.UNISEX,
+        "styles": ["Rib Polo", "Knit Tank", "Soft Cardigan", "Sleeveless Knit", "Textured Pullover"],
+    },
+    {
+        "name": "Accessories",
+        "slug": "accessories",
+        "description": "Finishing pieces, bags, scarves, and small styling details.",
+        "query": "fashion,accessories,bag,scarf",
+        "gender": Gender.UNISEX,
+        "styles": ["Structured Bag", "Silk Scarf", "Travel Tote", "Leather Belt", "Evening Pouch"],
+    },
 ]
 
 FABRICS = [
@@ -83,6 +139,114 @@ COLORS = [
     ("Indigo", "#293a5f"),
 ]
 
+PEXELS_IMAGE_IDS = [
+    994523,
+    985635,
+    1036623,
+    1462637,
+    1536619,
+    1559486,
+    1926769,
+    2065200,
+    2703202,
+    291762,
+    5325881,
+    6311392,
+    7679720,
+    7691168,
+    7691168,
+    7691178,
+    7691224,
+    845434,
+    1040945,
+    1040945,
+    1043474,
+    1183266,
+    1300550,
+    1311590,
+    1620760,
+    1689731,
+    1707828,
+    2090785,
+    2613260,
+    298863,
+]
+
+IMAGE_POOLS = {
+    "dresses": [
+        994523,
+        985635,
+        1036623,
+        1462637,
+    ],
+    "two-piece-sets": [
+        1536619,
+        1559486,
+        1926769,
+        2065200,
+    ],
+    "tops": [
+        2703202,
+        291762,
+        5325881,
+        6311392,
+    ],
+    "bottoms": [
+        7679720,
+        7691168,
+        7691168,
+        7691178,
+    ],
+    "outerwear": [
+        7691224,
+        845434,
+        1040945,
+        1040945,
+    ],
+    "menswear": [
+        1043474,
+        1183266,
+        1300550,
+        1311590,
+    ],
+    "womenswear": [
+        994523,
+        985635,
+        1536619,
+        1926769,
+    ],
+    "children": [
+        3662667,
+        3661350,
+        5560019,
+        5623126,
+    ],
+    "shirts": [
+        1620760,
+        1689731,
+        1707828,
+        2090785,
+    ],
+    "trousers": [
+        2613260,
+        298863,
+        1043474,
+        1183266,
+    ],
+    "knitwear": [
+        1300550,
+        1311590,
+        1620760,
+        1689731,
+    ],
+    "accessories": [
+        994523,
+        2065200,
+        2703202,
+        7691224,
+    ],
+}
+
 SIZES = ["XS", "S", "M", "L", "XL"]
 NAME_PREFIXES = ["Ari", "Nara", "Eko", "Oro", "Sade", "Mina", "Zuri", "Ife", "Lumi", "Ayo"]
 
@@ -94,9 +258,9 @@ def slugify(value: str) -> str:
 
 
 def image_url(category: dict, product_index: int, image_index: int) -> str:
-    sig = f"{category['slug']}-{product_index}-{image_index}"
-    query = category["query"]
-    return f"https://source.unsplash.com/900x1200/?{query}&sig={sig}"
+    pool = IMAGE_POOLS[category["slug"]]
+    image_id = pool[(product_index + image_index) % len(pool)]
+    return f"https://images.pexels.com/photos/{image_id}/pexels-photo-{image_id}.jpeg?auto=compress&cs=tinysrgb&w=900&h=1200&fit=crop"
 
 
 async def get_or_create_taxonomy(session):
@@ -116,7 +280,7 @@ async def get_or_create_taxonomy(session):
         else:
             category.name = item["name"]
             category.description = item["description"]
-            category.banner_url = category.banner_url or image_url(item, 0, 0)
+            category.banner_url = image_url(item, 0, 0)
             category.sort_order = sort_order
         categories[item["slug"]] = category
 
@@ -234,6 +398,7 @@ async def main():
     async with async_session() as session:
         categories, fabrics, collections = await get_or_create_taxonomy(session)
         deleted = await delete_existing_seed_products(session)
+        await session.commit()
 
         product_rows = []
         product_meta = []

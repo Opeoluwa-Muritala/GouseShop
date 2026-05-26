@@ -20,8 +20,10 @@ async def create_order(
     cart = await get_cart(session, user_id=current_user.id)
     if not cart:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No active cart")
-    order = await create_order_from_cart(session, cart_id=cart.id, currency="USD")
-    return order
+    try:
+        return await create_order_from_cart(session, cart_id=cart.id, currency="USD")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.get("/", response_model=list[OrderRead])

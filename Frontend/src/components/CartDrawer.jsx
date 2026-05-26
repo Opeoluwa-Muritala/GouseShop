@@ -1,8 +1,19 @@
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { fallbackProducts } from "../data/fallbackProducts";
 import { getImage, money } from "../lib/format";
+import { SafeImage } from "./SafeImage";
 
-export function CartDrawer({ open, setOpen, cart, productByVariant, cartTotal, updateCartItem, createOrderAndPay, openAuth }) {
+export function CartDrawer({
+  open,
+  setOpen,
+  cart,
+  productByVariant,
+  cartTotal,
+  updateCartItem,
+  createOrderAndPay,
+  checkoutBusy,
+  openAuth,
+}) {
   return (
     <aside className={`drawer ${open ? "open" : ""}`} aria-hidden={!open}>
       <div className="drawer-panel">
@@ -20,7 +31,7 @@ export function CartDrawer({ open, setOpen, cart, productByVariant, cartTotal, u
               const product = productByVariant.get(item.variant_id);
               return (
                 <div className="cart-row" key={item.id}>
-                  <img src={product ? getImage(product) : fallbackProducts[0].images[0].secure_url} alt={product?.name || "Cart item"} />
+                  <SafeImage src={product ? getImage(product) : fallbackProducts[0].images[0].secure_url} alt={product?.name || "Cart item"} />
                   <div>
                     <h3>{product?.name || `Variant #${item.variant_id}`}</h3>
                     <p>{money(item.price_snapshot)} each</p>
@@ -40,9 +51,9 @@ export function CartDrawer({ open, setOpen, cart, productByVariant, cartTotal, u
             <span>Subtotal</span>
             <strong>{money(cartTotal)}</strong>
           </div>
-          <button className="primary-action" onClick={() => createOrderAndPay("paystack")}>
+          <button className="primary-action" disabled={checkoutBusy || !cart?.items?.length} onClick={() => createOrderAndPay("paystack")}>
             <ShoppingBag size={18} />
-            Checkout with Paystack
+            {checkoutBusy ? "Preparing checkout" : "Checkout with Paystack"}
           </button>
           <button className="secondary-action" onClick={openAuth}>Sign in before checkout</button>
         </div>

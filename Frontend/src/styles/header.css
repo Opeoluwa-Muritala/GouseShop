@@ -57,6 +57,13 @@
   color: var(--muted);
 }
 
+.nav-links button:hover,
+.nav-links button.active {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 8px;
+}
+
 .nav-actions {
   justify-content: flex-end;
 }
@@ -70,5 +77,5 @@
 }
 
 .mobile-only {
-  display: none;
+  display: inline-grid;
 }

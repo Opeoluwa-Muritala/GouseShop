@@ -7,6 +7,7 @@ export function ShopControls({ query, setQuery, filter, setFilter }) {
     ["featured", "Featured"],
     ["women", "Women"],
     ["men", "Men"],
+    ["children", "Children"],
     ["sale", "Sale"],
   ];
 

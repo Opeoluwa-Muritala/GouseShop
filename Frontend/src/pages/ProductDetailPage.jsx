@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, ShoppingBag } from "lucide-react";
 import { useState } from "react";
+import { SafeImage } from "../components/SafeImage";
 import { getImage, money } from "../lib/format";
 
 export function ProductDetailPage({ product, onBack, onAddToCart }) {
@@ -13,7 +14,7 @@ export function ProductDetailPage({ product, onBack, onAddToCart }) {
       </button>
       <div className="detail-layout">
         <div className="detail-media">
-          <img src={getImage(product)} alt={product.name} />
+          <SafeImage src={getImage(product)} alt={product.name} />
         </div>
         <div className="detail-info">
           <p className="eyebrow">{product.is_bestseller ? "Bestseller" : "GouseShop atelier"}</p>
