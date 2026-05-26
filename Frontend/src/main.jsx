@@ -7,6 +7,7 @@ import { MobileNav } from "./components/MobileNav";
 import { Toast } from "./components/Toast";
 import { fallbackProducts } from "./data/fallbackProducts";
 import { api } from "./lib/api";
+import { openPaystackSdk, paystackAccessCode, paystackCheckoutUrl } from "./lib/paystack";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { ShopPage } from "./pages/ShopPage";
 import "./styles/styles.css";
@@ -146,6 +147,20 @@ function App() {
         method: "POST",
         body: JSON.stringify({ order_id: order.id, provider, country: "NG", currency: order.currency || "NGN" }),
       });
+      if (provider === "paystack") {
+        try {
+          await openPaystackSdk(paystackAccessCode(payment));
+          setDrawerOpen(false);
+          return;
+        } catch {
+          const checkoutUrl = paystackCheckoutUrl(payment);
+          if (checkoutUrl) {
+            window.location.href = checkoutUrl;
+            return;
+          }
+          throw new Error("Paystack checkout could not be opened.");
+        }
+      }
       if (payment.provider_checkout_url) window.location.href = payment.provider_checkout_url;
     } catch (error) {
       setStatus(error.message);
