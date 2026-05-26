@@ -1,7 +1,7 @@
 def test_register_login_refresh_logout(client):
     register = client.post("/api/v1/auth/register", json={"email": "user@example.com", "password": "secret123"})
     assert register.status_code == 200
-    assert register.json()["email"] == "user@example.com"
+    assert register.json()["access_token"]
 
     login = client.post("/api/v1/auth/login", json={"email": "user@example.com", "password": "secret123"})
     assert login.status_code == 200

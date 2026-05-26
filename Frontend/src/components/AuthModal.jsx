@@ -15,14 +15,14 @@ export function AuthModal({ open, setOpen, setStatus, reloadCart }) {
     try {
       const path = mode === "login" ? "/auth/login" : "/auth/register";
       const data = await api(path, { method: "POST", body: JSON.stringify({ email, password }) });
-      if (mode === "register") {
-        setStatus("Account created. Sign in to continue.");
-        setMode("login");
-      } else {
+      if (data.access_token) {
         localStorage.setItem("gouseshop_token", data.access_token);
-        setStatus("Signed in.");
+        setStatus(mode === "register" ? "Account created. Your bag is saved." : "Signed in. Your bag is saved.");
         setOpen(false);
         reloadCart();
+      } else {
+        setStatus("Account created. Sign in to continue.");
+        setMode("login");
       }
     } catch (error) {
       setStatus(error.message);

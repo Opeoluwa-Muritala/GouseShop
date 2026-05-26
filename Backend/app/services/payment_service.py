@@ -222,7 +222,7 @@ async def _initiate_paystack_payment(
 
     payload = {
         "email": _customer_email(order),
-        "amount": amount,
+        "amount": amount * 100,
         "currency": currency,
         "reference": reference,
         "callback_url": settings.payment_callback_url,
@@ -320,7 +320,7 @@ async def _verify_paystack_payment(payment: Payment) -> tuple[bool, dict]:
         and data.get("status") is True
         and transaction.get("status") == "success"
         and transaction.get("reference") == payment.provider_reference
-        and int(transaction.get("amount") or 0) == payment.amount
+        and int(transaction.get("amount") or 0) == payment.amount * 100
         and str(transaction.get("currency") or "").upper() == payment.currency.upper()
     )
     return verified, provider_response

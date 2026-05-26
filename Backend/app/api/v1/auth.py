@@ -36,13 +36,19 @@ class LogoutRequest(BaseModel):
     refresh_token: str
 
 
-@router.post("/register", response_model=UserRead, dependencies=[Depends(rate_limit("auth_register", 10, 60))])
-async def register(data: UserCreate, session: AsyncSession = Depends(get_session)):
+@router.post("/register", response_model=Token, dependencies=[Depends(rate_limit("auth_register", 10, 60))])
+async def register(
+    data: UserCreate,
+    session: AsyncSession = Depends(get_session),
+    x_session_id: str | None = Header(None, alias="X-Session-Id"),
+):
     existing = await session.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     user = await create_user(session, data)
-    return user
+    if x_session_id:
+        await merge_guest_cart_into_user_cart(session, x_session_id, user.id)
+    return build_tokens(user)
 
 
 @router.post("/login", response_model=Token, dependencies=[Depends(rate_limit("auth_login", 10, 60))])
