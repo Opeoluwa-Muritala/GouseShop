@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from app.core.geo import request_currency
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -12,6 +13,7 @@ router = APIRouter()
 
 @router.post("/", response_model=OrderRead)
 async def create_order(
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user=Depends(get_current_user),
 ):
@@ -21,7 +23,8 @@ async def create_order(
     if not cart:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No active cart")
     try:
-        return await create_order_from_cart(session, cart_id=cart.id, currency="USD")
+        currency = await request_currency(request)
+        return await create_order_from_cart(session, cart_id=cart.id, currency=currency)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 

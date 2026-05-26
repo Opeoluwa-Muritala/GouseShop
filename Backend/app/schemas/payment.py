@@ -7,7 +7,7 @@ class PaymentInitiate(BaseModel):
     order_id: int
     provider: Optional[str] = None
     country: Optional[str] = None
-    currency: str = "USD"
+    currency: Optional[str] = None
 
 
 class PaymentRead(BaseModel):

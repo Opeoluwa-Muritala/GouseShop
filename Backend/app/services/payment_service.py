@@ -57,12 +57,18 @@ def choose_provider(provider: str | None = None, country: str | None = None) -> 
 
 
 async def initiate_payment(
-    session: AsyncSession, order: Order, provider: str | None = None, country: str | None = None, currency: str = "USD"
+    session: AsyncSession, order: Order, provider: str | None = None, country: str | None = None, currency: str | None = None
 ) -> Payment:
     selected = choose_provider(provider, country)
     reference = f"{selected.value}_{uuid4().hex}"
     amount = order.total
-    selected_currency = currency or order.currency
+    selected_currency = (currency or order.currency or "NGN").upper()
+    if selected == PaymentProvider.PAYSTACK and selected_currency not in {"NGN", "GHS", "ZAR", "KES"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Paystack does not support {selected_currency} for this checkout",
+        )
+    order.currency = selected_currency
 
     if settings.use_fake_external_services:
         checkout_url = f"https://checkout.gouseshop.local/{reference}"
@@ -237,7 +243,12 @@ async def _initiate_paystack_payment(
     if response.status_code >= 400 or not data.get("status"):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail={"provider": "paystack", "message": data.get("message", "Payment initialization failed")},
+            detail={
+                "provider": "paystack",
+                "message": data.get("message", "Payment initialization failed"),
+                "status_code": response.status_code,
+                "response": data,
+            },
         )
     checkout_url = data["data"]["authorization_url"]
     return checkout_url, {"provider": "paystack", "initialize": data}

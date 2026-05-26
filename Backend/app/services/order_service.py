@@ -7,7 +7,7 @@ from app.models.catalog import Variant
 from app.models.enums import OrderStatus
 
 
-async def create_order_from_cart(session: AsyncSession, cart_id: int, currency: str = "USD") -> Order:
+async def create_order_from_cart(session: AsyncSession, cart_id: int, currency: str = "NGN") -> Order:
     cart = await session.get(Cart, cart_id)
     if cart is None:
         raise ValueError("Cart not found")

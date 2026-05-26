@@ -24,7 +24,8 @@ export async function api(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail));
+    const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail);
+    throw new Error(`${response.status}: ${detail}`);
   }
   if (response.status === 204) return null;
   return response.json();

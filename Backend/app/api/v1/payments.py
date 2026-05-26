@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user, require_admin
 from app.core.database import get_session
+from app.core.geo import request_country_code, request_paystack_currency, request_currency
 from app.core.rate_limit import rate_limit
 from app.models.enums import PaymentProvider
 from app.schemas.payment import PaymentInitiate, PaymentRead, RefundRequest
@@ -13,11 +14,25 @@ router = APIRouter()
 
 
 @router.post("/initiate", response_model=PaymentRead, dependencies=[Depends(rate_limit("payment_initiate", 20, 60))])
-async def initiate(data: PaymentInitiate, session: AsyncSession = Depends(get_session), current_user=Depends(get_current_user)):
+async def initiate(
+    data: PaymentInitiate,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user=Depends(get_current_user),
+):
     order = await get_order_by_id(session, data.order_id, user_id=current_user.id)
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    return await initiate_payment(session, order, data.provider, data.country, data.currency)
+    detected_country = data.country or await request_country_code(request)
+    detected_currency = data.currency
+    if not detected_currency:
+        if (data.provider or "").lower() == PaymentProvider.PAYSTACK.value:
+            detected_currency = await request_paystack_currency(request)
+        else:
+            detected_currency = await request_currency(request)
+    if (data.provider or "").lower() == PaymentProvider.PAYSTACK.value and order.currency != detected_currency:
+        order.currency = detected_currency
+    return await initiate_payment(session, order, data.provider, detected_country, detected_currency)
 
 
 @router.get("/verify/{ref}", response_model=PaymentRead)

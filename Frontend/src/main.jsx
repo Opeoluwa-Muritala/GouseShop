@@ -7,7 +7,7 @@ import { MobileNav } from "./components/MobileNav";
 import { Toast } from "./components/Toast";
 import { fallbackProducts } from "./data/fallbackProducts";
 import { api } from "./lib/api";
-import { openPaystackSdk, paystackAccessCode, paystackCheckoutUrl } from "./lib/paystack";
+import { openPaystackSdk, paystackAccessCode, paystackCheckoutUrl, preloadPaystackSdk } from "./lib/paystack";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { ShopPage } from "./pages/ShopPage";
 import "./styles/styles.css";
@@ -31,6 +31,7 @@ function App() {
   useEffect(() => {
     loadCategories();
     loadCart();
+    preloadPaystackSdk();
   }, []);
 
   useEffect(() => {
@@ -141,24 +142,28 @@ function App() {
     if (checkoutBusy) return;
     setCheckoutBusy(true);
     try {
+      setStatus("Preparing Paystack checkout...");
       const order = await api("/orders/", { method: "POST", body: "{}" });
       await loadCart();
       const payment = await api("/payments/initiate", {
         method: "POST",
-        body: JSON.stringify({ order_id: order.id, provider, country: "NG", currency: order.currency || "NGN" }),
+        body: JSON.stringify({ order_id: order.id, provider }),
       });
       if (provider === "paystack") {
+        const accessCode = paystackAccessCode(payment);
+        const checkoutUrl = paystackCheckoutUrl(payment);
         try {
-          await openPaystackSdk(paystackAccessCode(payment));
+          await openPaystackSdk(accessCode);
           setDrawerOpen(false);
+          setStatus("Paystack checkout opened.");
           return;
-        } catch {
-          const checkoutUrl = paystackCheckoutUrl(payment);
+        } catch (sdkError) {
           if (checkoutUrl) {
+            setStatus("Opening Paystack checkout page...");
             window.location.href = checkoutUrl;
             return;
           }
-          throw new Error("Paystack checkout could not be opened.");
+          throw new Error(sdkError.message || "Paystack checkout could not be opened.");
         }
       }
       if (payment.provider_checkout_url) window.location.href = payment.provider_checkout_url;

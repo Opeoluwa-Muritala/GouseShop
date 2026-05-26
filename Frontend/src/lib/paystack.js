@@ -10,12 +10,22 @@ export function paystackCheckoutUrl(payment) {
   return payment?.provider_checkout_url;
 }
 
+export function preloadPaystackSdk() {
+  loadPaystackSdk().catch(() => {});
+}
+
 export async function openPaystackSdk(accessCode) {
   if (!accessCode) {
     throw new Error("Paystack access code is missing.");
   }
 
   const PaystackConstructor = await loadPaystackSdk();
+
+  if (typeof PaystackConstructor.resumeTransaction === "function") {
+    PaystackConstructor.resumeTransaction(accessCode);
+    return;
+  }
+
   const popup = new PaystackConstructor();
 
   if (typeof popup.resumeTransaction !== "function") {

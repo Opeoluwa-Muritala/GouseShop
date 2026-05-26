@@ -17,7 +17,7 @@ class Payment(Base):
     provider_reference: Mapped[str] = mapped_column(String(160), nullable=False, unique=True)
     provider_checkout_url: Mapped[str] = mapped_column(String(500), nullable=True)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    currency: Mapped[str] = mapped_column(String(10), nullable=False, server_default="USD")
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, server_default="NGN")
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus, native_enum=False, values_callable=lambda enum: [item.value for item in enum]),
         nullable=False,
