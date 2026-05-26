@@ -20,11 +20,14 @@ function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [categories, setCategories] = useState([]);
+  const [apiState, setApiState] = useState("connecting");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
     loadCart();
   }, []);
 
@@ -33,10 +36,21 @@ function App() {
     try {
       const data = await api("/products/?limit=50");
       setProducts(data.items?.length ? data.items : fallbackProducts);
+      setApiState(data.items?.length ? "live" : "empty");
     } catch {
       setProducts(fallbackProducts);
+      setApiState("offline");
+      setStatus("Backend is offline or blocked. Showing preview catalog.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      setCategories(await api("/categories/"));
+    } catch {
+      setCategories([]);
     }
   }
 
@@ -133,6 +147,8 @@ function App() {
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
+            categories={categories}
+            apiState={apiState}
             onSelectProduct={setSelectedProduct}
             onAddToCart={addToCart}
           />

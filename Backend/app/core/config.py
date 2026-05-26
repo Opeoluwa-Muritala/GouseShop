@@ -1,5 +1,6 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 class Settings(BaseSettings):
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
     password_reset_token_expire_minutes: int = 30
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:5173"])
+    cors_origin_regex: str | None = None
     use_fake_external_services: bool = True
 
     paystack_secret_key: str | None = None
@@ -40,13 +42,31 @@ class Settings(BaseSettings):
     email_from: str = "GouseShop <no-reply@gouseshop.local>"
     email_reply_to: str | None = None
 
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            if value.startswith("["):
+                return value
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
     @property
     def sqlalchemy_database_url(self) -> str:
+        url = self.database_url
         if self.database_url.startswith("postgres://"):
-            return self.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            url = self.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
         if self.database_url.startswith("postgresql://"):
-            return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return self.database_url
+            url = self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgresql+asyncpg://"):
+            parsed = urlsplit(url)
+            query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+            sslmode = query.pop("sslmode", None)
+            if sslmode and "ssl" not in query:
+                query["ssl"] = "require" if sslmode == "require" else sslmode
+            url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+        return url
 
 
 settings = Settings()

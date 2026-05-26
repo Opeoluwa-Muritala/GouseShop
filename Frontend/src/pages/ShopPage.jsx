@@ -1,11 +1,24 @@
 import { ProductCard } from "../components/ProductCard";
 import { ShopControls } from "../components/ShopControls";
 
-export function ShopPage({ loading, products, query, setQuery, filter, setFilter, onSelectProduct, onAddToCart }) {
+export function ShopPage({
+  loading,
+  products,
+  query,
+  setQuery,
+  filter,
+  setFilter,
+  categories,
+  apiState,
+  onSelectProduct,
+  onAddToCart,
+}) {
   return (
     <>
       <Hero setFilter={setFilter} />
+      <ApiStatus apiState={apiState} />
       <ShopControls query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} />
+      <CategoryRail categories={categories} />
       <section className="product-grid-section" id="shop">
         <div className="section-heading">
           <p>{loading ? "Loading atelier" : `${products.length} pieces`}</p>
@@ -25,6 +38,35 @@ export function ShopPage({ loading, products, query, setQuery, filter, setFilter
       </section>
       <EditorialBand />
     </>
+  );
+}
+
+function ApiStatus({ apiState }) {
+  const label = {
+    connecting: "Connecting to catalog API",
+    live: "Live catalog API",
+    empty: "API connected, catalog empty",
+    offline: "Preview catalog",
+  }[apiState];
+
+  return (
+    <section className={`api-status ${apiState}`}>
+      <span />
+      {label}
+    </section>
+  );
+}
+
+function CategoryRail({ categories }) {
+  if (!categories?.length) return null;
+  return (
+    <section className="category-rail">
+      {categories.map((category) => (
+        <a key={category.id} href="#shop">
+          {category.name}
+        </a>
+      ))}
+    </section>
   );
 }
 
