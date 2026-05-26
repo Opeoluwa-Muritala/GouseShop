@@ -69,6 +69,10 @@
     display: none;
   }
 
+  .nav-actions {
+    display: none;
+  }
+
   .hero {
     min-height: 78svh;
   }
@@ -91,6 +95,10 @@
   .detail-page {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .shop-controls {
+    display: none;
   }
 
   .category-rail {

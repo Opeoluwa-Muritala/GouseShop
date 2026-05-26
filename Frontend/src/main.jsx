@@ -187,6 +187,7 @@ function App() {
         setFilter={selectFilter}
         setMobileNavOpen={setMobileNavOpen}
         goHome={() => setSelectedProduct(null)}
+        focusSearch={() => document.querySelector(".search-box input")?.focus()}
       />
       <main>
         {!selectedProduct ? (
@@ -219,7 +220,14 @@ function App() {
         openAuth={() => setAuthOpen(true)}
       />
       <AuthModal open={authOpen} setOpen={setAuthOpen} setStatus={setStatus} reloadCart={loadCart} />
-      <MobileNav open={mobileNavOpen} setOpen={setMobileNavOpen} setFilter={selectFilter} categories={categories} />
+      <MobileNav
+        open={mobileNavOpen}
+        setOpen={setMobileNavOpen}
+        setFilter={selectFilter}
+        categories={categories}
+        query={query}
+        setQuery={setQuery}
+      />
       {status && <Toast message={status} onClose={() => setStatus("")} />}
     </>
   );

@@ -1,6 +1,6 @@
 import { Menu, Search, ShoppingBag, User } from "lucide-react";
 
-export function Header({ cartCount, filter, setAuthOpen, setDrawerOpen, setFilter, setMobileNavOpen, goHome }) {
+export function Header({ cartCount, filter, setAuthOpen, setDrawerOpen, setFilter, setMobileNavOpen, goHome, focusSearch }) {
   const links = [
     ["new", "New"],
     ["women", "Women"],
@@ -23,7 +23,7 @@ export function Header({ cartCount, filter, setAuthOpen, setDrawerOpen, setFilte
           ))}
         </div>
         <div className="nav-actions">
-          <button className="icon-button" aria-label="Search">
+          <button className="icon-button" onClick={focusSearch} aria-label="Search">
             <Search size={18} />
           </button>
           <button className="icon-button" onClick={() => setAuthOpen(true)} aria-label="Account">

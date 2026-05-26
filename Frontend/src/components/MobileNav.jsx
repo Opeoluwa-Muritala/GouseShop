@@ -1,15 +1,6 @@
-import { ArrowRight, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
-export function MobileNav({ open, setOpen, setFilter, categories = [] }) {
-  const links = [
-    ["all", "All"],
-    ["new", "New"],
-    ["women", "Women"],
-    ["men", "Men"],
-    ["children", "Children"],
-    ["sale", "Sale"],
-  ];
-
+export function MobileNav({ open, setOpen, setFilter, categories = [], query, setQuery }) {
   if (!open) return null;
 
   function choose(value) {
@@ -24,14 +15,14 @@ export function MobileNav({ open, setOpen, setFilter, categories = [] }) {
           <span>GouseShop</span>
           <button className="icon-button" onClick={() => setOpen(false)} aria-label="Close menu"><X size={19} /></button>
         </div>
-        <nav className="side-menu-nav" aria-label="Featured shop links">
-          {links.map(([value, label]) => (
-            <button key={value} onClick={() => choose(value)}>
-              {label}
-              <ArrowRight size={17} />
-            </button>
-          ))}
-        </nav>
+        <label className="side-menu-search">
+          <Search size={17} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search dresses, sets, linen"
+          />
+        </label>
         {categories.length > 0 && (
           <div className="side-menu-categories">
             <p>Categories</p>
