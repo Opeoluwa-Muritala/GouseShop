@@ -68,12 +68,24 @@
   justify-content: flex-end;
 }
 
+.nav .icon-button,
+.nav .bag-button {
+  border: 0;
+  background: transparent;
+}
+
+.nav .icon-button:hover,
+.nav .bag-button:hover {
+  color: var(--ink);
+  transform: none;
+}
+
 .bag-button {
   width: auto;
-  min-width: 58px;
+  min-width: 40px;
   grid-auto-flow: column;
-  gap: 6px;
-  padding: 0 12px;
+  gap: 5px;
+  padding: 0;
 }
 
 .mobile-only {
