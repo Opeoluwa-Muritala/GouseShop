@@ -16,8 +16,15 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
     password_reset_token_expire_minutes: int = 30
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:5173"])
-    cors_origin_regex: str | None = None
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://gouseshop-1.onrender.com",
+        ]
+    )
+    cors_origin_regex: str | None = r"https://.*\.onrender\.com"
     use_fake_external_services: bool = True
 
     paystack_secret_key: str | None = None
@@ -51,6 +58,19 @@ class Settings(BaseSettings):
                 return value
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        origins = set(self.cors_origins)
+        origins.update(
+            {
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "https://gouseshop-1.onrender.com",
+            }
+        )
+        return sorted(origins)
 
     @property
     def sqlalchemy_database_url(self) -> str:

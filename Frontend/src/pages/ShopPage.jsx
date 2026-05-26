@@ -10,6 +10,8 @@ export function ShopPage({
   setFilter,
   categories,
   apiState,
+  pagination,
+  onPageChange,
   onSelectProduct,
   onAddToCart,
 }) {
@@ -35,9 +37,32 @@ export function ShopPage({
             />
           ))}
         </div>
+        <Pagination pagination={pagination} loading={loading} onPageChange={onPageChange} />
       </section>
       <EditorialBand />
     </>
+  );
+}
+
+function Pagination({ pagination, loading, onPageChange }) {
+  const { limit, offset, total } = pagination;
+  const currentPage = Math.floor(offset / limit) + 1;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const canGoBack = offset > 0 && !loading;
+  const canGoNext = offset + limit < total && !loading;
+
+  return (
+    <nav className="pagination" aria-label="Product pagination">
+      <button disabled={!canGoBack} onClick={() => onPageChange(Math.max(0, offset - limit))}>
+        Previous
+      </button>
+      <span>
+        Page {currentPage} of {totalPages}
+      </span>
+      <button disabled={!canGoNext} onClick={() => onPageChange(offset + limit)}>
+        Next
+      </button>
+    </nav>
   );
 }
 

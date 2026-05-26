@@ -186,6 +186,33 @@
   gap: 18px;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.pagination button {
+  min-width: 104px;
+  height: 42px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pagination span {
+  min-width: 116px;
+  text-align: center;
+  color: var(--muted);
+}
+
 .product-card {
   min-width: 0;
 }

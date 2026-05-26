@@ -22,25 +22,32 @@ function App() {
   const [filter, setFilter] = useState("all");
   const [categories, setCategories] = useState([]);
   const [apiState, setApiState] = useState("connecting");
+  const [pagination, setPagination] = useState({ limit: 24, offset: 0, total: 0 });
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(0);
     loadCategories();
     loadCart();
   }, []);
 
-  async function loadProducts() {
+  async function loadProducts(nextOffset = pagination.offset) {
     setLoading(true);
     try {
-      const data = await api("/products/?limit=50");
+      const data = await api(`/products/?limit=${pagination.limit}&offset=${nextOffset}`);
       setProducts(data.items?.length ? data.items : fallbackProducts);
       setApiState(data.items?.length ? "live" : "empty");
+      setPagination((current) => ({
+        ...current,
+        offset: data.offset ?? nextOffset,
+        total: data.total ?? data.items?.length ?? 0,
+      }));
     } catch {
       setProducts(fallbackProducts);
       setApiState("offline");
       setStatus("Backend is offline or blocked. Showing preview catalog.");
+      setPagination((current) => ({ ...current, offset: 0, total: fallbackProducts.length }));
     } finally {
       setLoading(false);
     }
@@ -149,6 +156,8 @@ function App() {
             setFilter={setFilter}
             categories={categories}
             apiState={apiState}
+            pagination={pagination}
+            onPageChange={loadProducts}
             onSelectProduct={setSelectedProduct}
             onAddToCart={addToCart}
           />
