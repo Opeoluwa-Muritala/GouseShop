@@ -1,3 +1,4 @@
+import json
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -52,7 +53,7 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             value = value.strip()
             if value.startswith("["):
-                return value
+                return json.loads(value)
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
