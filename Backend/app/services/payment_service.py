@@ -1,4 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
+import hashlib
+import hmac
 from time import monotonic
 from uuid import uuid4
 
@@ -18,8 +20,26 @@ SUPPORTED_PAYSTACK_COUNTRIES = {"NG", "GH", "ZA", "KE"}
 PAYSTACK_BASE_URL = "https://api.paystack.co"
 FLUTTERWAVE_BASE_URL = "https://api.flutterwave.com/v3"
 FLUTTERWAVE_TOKEN_URL = "https://idp.flutterwave.com/realms/flutterwave/protocol/openid-connect/token"
-_flutterwave_token: str | None = None
-_flutterwave_token_expires_at = 0.0
+class ExpiringTokenCache:
+    def __init__(self) -> None:
+        self.token: str | None = None
+        self.expires_at = 0.0
+
+    def get(self) -> str | None:
+        if self.token and monotonic() < self.expires_at - 60:
+            return self.token
+        return None
+
+    def set(self, token: str, expires_in: int) -> None:
+        self.token = token
+        self.expires_at = monotonic() + expires_in
+
+    def clear(self) -> None:
+        self.token = None
+        self.expires_at = 0.0
+
+
+flutterwave_token_cache = ExpiringTokenCache()
 
 
 def _provider_response_json(response: httpx.Response, provider: str) -> dict:
@@ -125,11 +145,11 @@ async def verify_payment(session: AsyncSession, reference: str) -> Payment | Non
         return payment
 
     payment.status = PaymentStatus.PAID
-    payment.verified_at = datetime.utcnow()
+    payment.verified_at = datetime.now(timezone.utc)
     order = await session.get(Order, payment.order_id)
     if order:
         order.status = OrderStatus.PAID
-        order.paid_at = datetime.utcnow()
+        order.paid_at = datetime.now(timezone.utc)
     await session.commit()
     await session.refresh(payment)
     return payment
@@ -139,8 +159,17 @@ async def refund_payment(session: AsyncSession, reference: str, amount: int | No
     payment = await get_payment_by_reference(session, reference)
     if payment is None:
         return None
+    refund_amount = amount or payment.amount
+    if settings.use_fake_external_services or payment.provider == PaymentProvider.FAKE:
+        provider_response = {**(payment.provider_response or {}), "refund": {"mode": "fake", "amount": refund_amount}}
+    elif payment.provider == PaymentProvider.PAYSTACK:
+        provider_response = await _refund_paystack_payment(payment, refund_amount)
+    elif payment.provider == PaymentProvider.FLUTTERWAVE:
+        provider_response = await _refund_flutterwave_payment(payment, refund_amount)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported payment provider")
     payment.status = PaymentStatus.REFUNDED
-    payment.provider_response = {**(payment.provider_response or {}), "refund_amount": amount or payment.amount}
+    payment.provider_response = provider_response
     order = await session.get(Order, payment.order_id)
     if order:
         order.status = OrderStatus.REFUNDED
@@ -150,7 +179,20 @@ async def refund_payment(session: AsyncSession, reference: str, amount: int | No
 
 
 def verify_webhook_signature(provider: PaymentProvider, payload: bytes, signature: str | None) -> bool:
-    return bool(signature) or provider == PaymentProvider.FAKE
+    if provider == PaymentProvider.FAKE:
+        return True
+    if not signature:
+        return False
+    if provider == PaymentProvider.PAYSTACK:
+        secret = settings.paystack_webhook_secret or settings.paystack_secret_key
+        if not secret:
+            return False
+        digest = hmac.new(secret.encode("utf-8"), payload, hashlib.sha512).hexdigest()
+        return hmac.compare_digest(digest, signature)
+    if provider == PaymentProvider.FLUTTERWAVE:
+        secret = settings.flutterwave_webhook_secret
+        return bool(secret) and hmac.compare_digest(secret, signature)
+    return False
 
 
 def _customer_email(order: Order) -> str:
@@ -174,10 +216,9 @@ def _flutterwave_client_credentials() -> tuple[str | None, str | None]:
 
 
 async def _get_flutterwave_access_token() -> str:
-    global _flutterwave_token, _flutterwave_token_expires_at
-
-    if _flutterwave_token and monotonic() < _flutterwave_token_expires_at - 60:
-        return _flutterwave_token
+    cached_token = flutterwave_token_cache.get()
+    if cached_token:
+        return cached_token
 
     client_id, client_secret = _flutterwave_client_credentials()
     if not client_id or not client_secret:
@@ -209,8 +250,7 @@ async def _get_flutterwave_access_token() -> str:
         )
 
     expires_in = int(data.get("expires_in") or 600)
-    _flutterwave_token = access_token
-    _flutterwave_token_expires_at = monotonic() + expires_in
+    flutterwave_token_cache.set(access_token, expires_in)
     return access_token
 
 
@@ -351,3 +391,78 @@ async def _verify_flutterwave_payment(payment: Payment) -> tuple[bool, dict]:
         and str(transaction.get("currency") or "").upper() == payment.currency.upper()
     )
     return verified, provider_response
+
+
+async def _refund_paystack_payment(payment: Payment, amount: int) -> dict:
+    if not settings.paystack_secret_key:
+        raise _provider_not_configured(PaymentProvider.PAYSTACK)
+
+    payload = {"transaction": payment.provider_reference, "amount": amount * 100}
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            f"{PAYSTACK_BASE_URL}/refund",
+            headers={
+                "Authorization": f"Bearer {settings.paystack_secret_key}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "GouseShop/1.0",
+            },
+            json=payload,
+        )
+    data = _provider_response_json(response, "paystack")
+    if response.status_code >= 400 or data.get("status") is not True:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "provider": "paystack",
+                "message": data.get("message", "Refund failed"),
+                "status_code": response.status_code,
+                "response": data,
+            },
+        )
+    return {**(payment.provider_response or {}), "refund": data}
+
+
+async def _refund_flutterwave_payment(payment: Payment, amount: int) -> dict:
+    access_token = await _get_flutterwave_access_token()
+    transaction_id = _flutterwave_transaction_id(payment)
+    if transaction_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Flutterwave transaction id is required before refunding",
+        )
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            f"{FLUTTERWAVE_BASE_URL}/transactions/{transaction_id}/refund",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "GouseShop/1.0",
+            },
+            json={"amount": amount},
+        )
+    data = _provider_response_json(response, "flutterwave")
+    if response.status_code >= 400 or data.get("status") != "success":
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "provider": "flutterwave",
+                "message": data.get("message", "Refund failed"),
+                "status_code": response.status_code,
+                "response": data,
+            },
+        )
+    return {**(payment.provider_response or {}), "refund": data}
+
+
+def _flutterwave_transaction_id(payment: Payment) -> int | str | None:
+    response = payment.provider_response or {}
+    for section in ("verify", "initialize"):
+        data = response.get(section)
+        if isinstance(data, dict):
+            transaction = data.get("data") or {}
+            if isinstance(transaction, dict) and transaction.get("id") is not None:
+                return transaction["id"]
+    return None

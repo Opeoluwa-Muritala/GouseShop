@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+**/__pycache__/
+__pycache__/*
+**/__pycache__/*
+*.py[cod]
+*$py.class
+.pytest_cache/
+**/.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Node / frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+.npm-cache/
+**/.npm-cache/
+coverage/
+**/coverage/
+
+# Virtual environments
+.venv/
+**/.venv/
+venv/
+**/venv/
+env/
+**/env/
+
+# Environment and secrets
+.env
+.env.*
+Backend/.env
+Frontend/.env
+*.env.example
+.env.example
+Backend/.env.example
+Frontend/.env.example
+
+# Test config
+pytest.ini
+**/pytest.ini
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db-journal
+*.sqlite-journal
+dump.rdb
+
+# Runtime artifacts
+celerybeat-schedule
+*.pid
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

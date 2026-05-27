@@ -44,11 +44,19 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: CORS_ORIGIN_REGEX
-        value: "https://.*\\.onrender\\.com"
+        value: ""
       - key: USE_FAKE_EXTERNAL_SERVICES
         value: "false"
       - key: USE_FAKE_REDIS
-        value: "true"
+        value: "false"
+      - key: REDIS_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: REDIS_KEY_PREFIX
+        value: "gouseshop:"
       - key: PAYMENT_CALLBACK_URL
         sync: false
       - key: PAYSTACK_SECRET_KEY
@@ -79,6 +87,8 @@ services:
         value: "5242880"
       - key: RESEND_API_KEY
         sync: false
+      - key: EMAIL_API_URL
+        value: "https://email-api-4ykn.onrender.com"
       - key: EMAIL_FROM
         sync: false
       - key: EMAIL_REPLY_TO

@@ -4,9 +4,10 @@ from hashlib import sha256
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.redis import redis_client
+from app.core.redis import redis_client, redis_key
 from app.core.security import (
     create_access_token,
+    create_email_verification_token,
     create_password_reset_token,
     create_refresh_token,
     decode_token,
@@ -44,14 +45,14 @@ def build_tokens(user: User) -> dict:
 
 
 async def revoke_refresh_token(token: str) -> None:
-    key = f"refresh:{sha256(token.encode('utf-8')).hexdigest()}"
+    key = redis_key(f"refresh:{sha256(token.encode('utf-8')).hexdigest()}")
     await redis_client.set(key, "revoked", ex=60 * 60 * 24 * 30)
 
 
 async def is_refresh_token_revoked(token: str) -> bool:
     if token is None:
         return True
-    key = f"refresh:{sha256(token.encode('utf-8')).hexdigest()}"
+    key = redis_key(f"refresh:{sha256(token.encode('utf-8')).hexdigest()}")
     return await redis_client.exists(key) == 1
 
 
@@ -64,6 +65,25 @@ def decode_user_id(token: str) -> Optional[str]:
 
 def build_password_reset_token(user: User) -> str:
     return create_password_reset_token(str(user.id))
+
+
+def build_email_verification_token(user: User) -> str:
+    return create_email_verification_token(str(user.id))
+
+
+async def verify_email_token(session: AsyncSession, token: str) -> bool:
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "email_verification":
+        return False
+    user_id = payload.get("sub")
+    if not user_id:
+        return False
+    user = await session.get(User, int(user_id))
+    if user is None or not user.is_active:
+        return False
+    user.is_email_verified = True
+    await session.commit()
+    return True
 
 
 async def reset_password(session: AsyncSession, token: str, password: str) -> bool:

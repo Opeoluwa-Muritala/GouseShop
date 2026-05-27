@@ -11,20 +11,16 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./gouseshop.db"
     redis_url: str = "redis://localhost:6379/0"
     use_fake_redis: bool = True
+    redis_key_prefix: str = "gouseshop:"
+    upstash_redis_rest_url: str | None = None
+    upstash_redis_rest_token: str | None = None
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
     password_reset_token_expire_minutes: int = 30
-    cors_origins: list[str] = Field(
-        default_factory=lambda: [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "https://gouseshop-1.onrender.com",
-        ]
-    )
-    cors_origin_regex: str | None = r"https://.*\.onrender\.com"
+    cors_origins: list[str] = Field(default_factory=list)
+    cors_origin_regex: str | None = None
     use_fake_external_services: bool = True
 
     paystack_secret_key: str | None = None
@@ -46,6 +42,7 @@ class Settings(BaseSettings):
     cloudinary_max_upload_bytes: int = 5 * 1024 * 1024
 
     resend_api_key: str | None = None
+    email_api_url: str = "https://email-api-4ykn.onrender.com"
     email_from: str = "GouseShop <no-reply@gouseshop.local>"
     email_reply_to: str | None = None
 
@@ -61,16 +58,7 @@ class Settings(BaseSettings):
 
     @property
     def allowed_cors_origins(self) -> list[str]:
-        origins = set(self.cors_origins)
-        origins.update(
-            {
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "https://gouseshop-1.onrender.com",
-            }
-        )
-        return sorted(origins)
+        return sorted(set(self.cors_origins))
 
     @property
     def sqlalchemy_database_url(self) -> str:

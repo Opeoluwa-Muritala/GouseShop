@@ -28,6 +28,7 @@ class Order(Base):
     paid_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="orders", lazy="selectin")
+    address = relationship("Address", lazy="selectin")
     items = relationship("OrderItem", back_populates="order", lazy="selectin", cascade="all, delete-orphan")
 
 

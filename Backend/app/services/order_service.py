@@ -1,34 +1,54 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cart import Cart, CartItem
 from app.models.order import Order, OrderItem
 from app.models.catalog import Variant
 from app.models.enums import OrderStatus
+from app.models.user import Address
 
 
-async def create_order_from_cart(session: AsyncSession, cart_id: int, currency: str = "NGN") -> Order:
+async def create_order_from_cart(
+    session: AsyncSession,
+    cart_id: int,
+    user_id: int,
+    address_id: int,
+    notes: str | None = None,
+    currency: str = "NGN",
+) -> Order:
     cart = await session.get(Cart, cart_id)
     if cart is None:
+        raise ValueError("Cart not found")
+    if cart.user_id != user_id:
         raise ValueError("Cart not found")
 
     items = cart.items
     if not items:
         raise ValueError("Cart is empty")
 
+    address = await session.get(Address, address_id)
+    if address is None or address.user_id != user_id:
+        raise ValueError("Shipping address not found")
+
     subtotal = 0
-    order = Order(user_id=cart.user_id, currency=currency)
+    order = Order(user_id=cart.user_id, address_id=address_id, notes=notes, currency=currency)
     session.add(order)
     await session.flush()
 
     for item in items:
+        reservation = await session.execute(
+            update(Variant)
+            .where(Variant.id == item.variant_id)
+            .where((Variant.stock_qty - Variant.reserved_qty) >= item.quantity)
+            .values(reserved_qty=Variant.reserved_qty + item.quantity)
+        )
+        if reservation.rowcount != 1:
+            raise ValueError("Insufficient inventory")
+
         variant = await session.get(Variant, item.variant_id)
         if variant is None:
             raise ValueError("Variant missing")
-        if variant.stock_qty - variant.reserved_qty < item.quantity:
-            raise ValueError("Insufficient inventory")
 
-        variant.reserved_qty += item.quantity
         price = (variant.product.price if variant.product else 0) + (variant.additional_price or 0)
         line_price = price * item.quantity
         subtotal += line_price

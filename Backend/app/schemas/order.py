@@ -16,6 +16,7 @@ class OrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    address_id: Optional[int]
     status: str
     subtotal: int
     shipping_fee: int
@@ -30,3 +31,8 @@ class OrderRead(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: str
     tracking_number: Optional[str] = None
+
+
+class OrderCreate(BaseModel):
+    address_id: int
+    notes: Optional[str] = None

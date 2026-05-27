@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.core.geo import request_currency
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.schemas.order import OrderRead, OrderStatusUpdate
+from app.models.order import Order
+from app.schemas.order import OrderCreate, OrderRead, OrderStatusUpdate
 from app.services.cart_service import get_cart
 from app.services.order_service import cancel_order, create_order_from_cart, get_order_by_id, list_user_orders, update_order_status
 from app.api.v1.deps import get_current_user, require_admin
@@ -13,6 +15,7 @@ router = APIRouter()
 
 @router.post("/", response_model=OrderRead)
 async def create_order(
+    data: OrderCreate,
     request: Request,
     session: AsyncSession = Depends(get_session),
     current_user=Depends(get_current_user),
@@ -24,8 +27,16 @@ async def create_order(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No active cart")
     try:
         currency = await request_currency(request)
-        return await create_order_from_cart(session, cart_id=cart.id, currency=currency)
+        return await create_order_from_cart(
+            session,
+            cart_id=cart.id,
+            user_id=current_user.id,
+            address_id=data.address_id,
+            notes=data.notes,
+            currency=currency,
+        )
     except ValueError as exc:
+        await session.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
@@ -39,9 +50,6 @@ async def get_orders(
 
 @router.get("/admin/list", response_model=list[OrderRead], dependencies=[Depends(require_admin)])
 async def admin_list_orders(session: AsyncSession = Depends(get_session)):
-    from sqlalchemy import select
-    from app.models.order import Order
-
     result = await session.execute(select(Order).order_by(Order.created_at.desc()))
     return result.scalars().unique().all()
 
