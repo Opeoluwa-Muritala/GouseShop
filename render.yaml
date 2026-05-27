@@ -42,7 +42,7 @@ services:
       - key: PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
         value: "30"
       - key: CORS_ORIGINS
-        sync: false
+        value: "https://gouseshop.onrender.com,https://gouseshop-frontend.onrender.com,https://gouseshop-1.onrender.com"
       - key: CORS_ORIGIN_REGEX
         value: ""
       - key: USE_FAKE_EXTERNAL_SERVICES

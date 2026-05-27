@@ -58,7 +58,14 @@ class Settings(BaseSettings):
 
     @property
     def allowed_cors_origins(self) -> list[str]:
-        return sorted(set(self.cors_origins))
+        origins = set(self.cors_origins)
+        origins.update(
+            {
+                "https://gouseshop.onrender.com",
+                "https://gouseshop-1.onrender.com",
+            }
+        )
+        return sorted(origins)
 
     @property
     def sqlalchemy_database_url(self) -> str:

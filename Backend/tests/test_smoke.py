@@ -28,3 +28,30 @@ def test_health_guest_cart_and_redis(client):
     assert cart.status_code == 400
 
     asyncio.run(_assert_redis_expiry_behaviour())
+
+
+def test_cors_preflight_allows_deployed_frontend(client):
+    response = client.options(
+        "/api/v1/products/?limit=24&offset=0",
+        headers={
+            "Origin": "https://gouseshop.onrender.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "X-Session-Id",
+        },
+    )
+
+    assert response.status_code in {200, 204}
+    assert response.headers["access-control-allow-origin"] == "https://gouseshop.onrender.com"
+
+
+def test_cors_preflight_rejects_unknown_origin(client):
+    response = client.options(
+        "/api/v1/products/?limit=24&offset=0",
+        headers={
+            "Origin": "https://example.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "X-Session-Id",
+        },
+    )
+
+    assert response.status_code == 400
