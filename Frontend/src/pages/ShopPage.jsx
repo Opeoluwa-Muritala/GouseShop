@@ -19,10 +19,8 @@ export function ShopPage({
     <>
       <Hero setFilter={setFilter} />
       <ShopControls query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} />
-      <CategoryRail categories={categories} />
       <section className="product-grid-section" id="shop">
         <div className="section-heading">
-          <p>{loading ? "Loading atelier" : `${products.length} pieces`}</p>
           <h2>Ready-to-wear with occasion energy</h2>
         </div>
         <div className="product-grid">
