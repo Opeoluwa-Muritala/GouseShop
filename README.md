@@ -246,7 +246,7 @@ USE_FAKE_EXTERNAL_SERVICES=false
 USE_FAKE_REDIS=false
 ```
 
-Use a long random `JWT_SECRET`, explicit `CORS_ORIGINS`, explicit `ALLOWED_HOSTS`, real payment webhook secrets, and real Redis/Upstash credentials.
+Use a long random `JWT_SECRET`, explicit `CORS_ORIGINS`, `ALLOWED_HOSTS=*.onrender.com,...` for Render service hosts, real payment webhook secrets, and real Redis/Upstash credentials.
 
 ## Tests
 

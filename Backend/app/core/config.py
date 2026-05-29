@@ -106,7 +106,14 @@ class Settings(BaseSettings):
         hosts = set(self.allowed_hosts)
         hosts.update({"localhost", "127.0.0.1", "testserver"})
         if self.is_production:
-            hosts.update({"gouseshop.onrender.com", "gouseshop-1.onrender.com", "gouseshop-backend.onrender.com"})
+            hosts.update(
+                {
+                    "gouseshop.onrender.com",
+                    "gouseshop-1.onrender.com",
+                    "gouseshop-backend.onrender.com",
+                    "*.onrender.com",
+                }
+            )
         return sorted(hosts)
 
     def validate_production_settings(self) -> None:
