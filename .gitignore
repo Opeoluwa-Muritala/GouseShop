@@ -37,8 +37,6 @@ env/
 **/env/
 
 # Environment and secrets
-.env
-.env.*
 Backend/.env
 Frontend/.env
 *.env.example
@@ -65,10 +63,10 @@ celerybeat-schedule
 *.pid
 
 # Editor and OS files
-.vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
+config.bat
