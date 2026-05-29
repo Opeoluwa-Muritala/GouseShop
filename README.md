@@ -246,7 +246,7 @@ USE_FAKE_EXTERNAL_SERVICES=false
 USE_FAKE_REDIS=false
 ```
 
-Use a long random `JWT_SECRET`, explicit `CORS_ORIGINS`, `ALLOWED_HOSTS=*.onrender.com,...` for Render service hosts, real payment webhook secrets, and real Redis/Upstash credentials.
+Use a long random `JWT_SECRET`, explicit `CORS_ORIGINS`, and real payment webhook secrets and Redis/Upstash credentials. On Render, `ALLOWED_HOSTS=*` is used so Render's proxy and health checks do not get rejected by host validation; browser access is still constrained by CORS.
 
 ## Tests
 

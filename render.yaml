@@ -46,7 +46,7 @@ services:
       - key: CORS_ORIGIN_REGEX
         value: ""
       - key: ALLOWED_HOSTS
-        value: "*.onrender.com,gouseshop-backend.onrender.com,gouseshop.onrender.com,gouseshop-1.onrender.com"
+        value: "*"
       - key: ENABLE_API_DOCS
         value: "false"
       - key: SESSION_COOKIE_SECURE

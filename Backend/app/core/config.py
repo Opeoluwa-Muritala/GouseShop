@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     @property
     def trusted_hosts(self) -> list[str]:
         hosts = set(self.allowed_hosts)
+        if "*" in hosts:
+            return ["*"]
         hosts.update({"localhost", "127.0.0.1", "testserver"})
         if self.is_production:
             hosts.update(
