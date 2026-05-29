@@ -21,8 +21,6 @@ export function Header({ cartCount, filter, setAuthOpen, setDrawerOpen, setFilte
           {links.map(([value, label]) => (
             <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{label}</button>
           ))}
-        </div>
-        <div className="nav-actions">
           <button className="icon-button" onClick={focusSearch} aria-label="Search">
             <Search size={18} />
           </button>
