@@ -106,7 +106,7 @@ class Settings(BaseSettings):
         hosts = set(self.allowed_hosts)
         if "*" in hosts:
             return ["*"]
-        hosts.update({"localhost", "127.0.0.1", "testserver"})
+        hosts.update({"localhost", "127.0.0.1", "testserver", "gouseshop-1.onrender.com",})
         if self.is_production:
             hosts.update(
                 {
