@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     password_reset_token_expire_minutes: int = 30
     cors_origins: list[str] = Field(default_factory=list)
     cors_origin_regex: str | None = None
-    allowed_hosts: list[str] = Field(default_factory=list)
+    allowed_hosts: str = ""
     enable_api_docs: bool = False
     session_cookie_secure: bool | None = None
     session_cookie_samesite: str | None = None
@@ -64,16 +64,6 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
-    @field_validator("allowed_hosts", mode="before")
-    @classmethod
-    def parse_allowed_hosts(cls, value):
-        if isinstance(value, str):
-            value = value.strip()
-            if value.startswith("["):
-                return json.loads(value)
-            return [host.strip() for host in value.split(",") if host.strip()]
-        return value
-
     @property
     def allowed_cors_origins(self) -> list[str]:
         origins = set(self.cors_origins)
@@ -103,7 +93,11 @@ class Settings(BaseSettings):
 
     @property
     def trusted_hosts(self) -> list[str]:
-        hosts = set(self.allowed_hosts)
+        value = self.allowed_hosts.strip()
+        if value.startswith("["):
+            hosts = set(json.loads(value))
+        else:
+            hosts = {host.strip() for host in value.split(",") if host.strip()}
         if "*" in hosts:
             return ["*"]
         hosts.update({"localhost", "127.0.0.1", "testserver", "gouseshop-1.onrender.com",})
