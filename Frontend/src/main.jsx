@@ -10,6 +10,8 @@ import { api } from "./lib/api";
 import { openPaystackSdk, paystackAccessCode, paystackCheckoutUrl, preloadPaystackSdk } from "./lib/paystack";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { ShopPage } from "./pages/ShopPage";
+import { AdminPage } from "./pages/AdminPage";
+import { AdminLoginPage } from "./pages/AdminLoginPage";
 import "./styles/styles.css";
 
 function App() {
@@ -27,11 +29,21 @@ function App() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [path, setPath] = useState(window.location.pathname);
 
   useEffect(() => {
     loadCategories();
     loadCart();
+    loadCurrentUser();
     preloadPaystackSdk();
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   useEffect(() => {
@@ -90,6 +102,14 @@ function App() {
       setCart(await api("/cart/"));
     } catch {
       setCart({ items: [], currency: "NGN" });
+    }
+  }
+
+  async function loadCurrentUser() {
+    try {
+      setCurrentUser(await api("/auth/me"));
+    } catch {
+      setCurrentUser(null);
     }
   }
 
@@ -176,6 +196,64 @@ function App() {
 
   const cartCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const cartTotal = cart?.items?.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0) || 0;
+  const isAdminPath = path === "/admin";
+  const isAdminLoginPath = path === "/admin/login";
+
+  function navigateTo(nextPath) {
+    window.history.pushState({}, "", nextPath);
+    setPath(nextPath);
+    setAdminOpen(nextPath === "/admin");
+  }
+
+  if (isAdminLoginPath) {
+    return (
+      <>
+        <AdminLoginPage
+          onSuccess={() => {
+            loadCurrentUser();
+            setAdminOpen(true);
+            navigateTo("/admin");
+          }}
+          onNavigateHome={() => navigateTo("/")}
+        />
+      </>
+    );
+  }
+
+  if (isAdminPath || adminOpen) {
+    return (
+      <>
+        <Header
+          cartCount={cartCount}
+          filter={filter}
+          setAuthOpen={setAuthOpen}
+          setDrawerOpen={setDrawerOpen}
+          setFilter={selectFilter}
+          setMobileNavOpen={setMobileNavOpen}
+          goHome={() => {
+            setSelectedProduct(null);
+            setAdminOpen(false);
+            navigateTo("/");
+          }}
+          focusSearch={() => document.querySelector(".search-box input")?.focus()}
+          isAdmin={currentUser?.role === "admin"}
+          openAdmin={() => {
+            setAdminOpen(true);
+            navigateTo(currentUser?.role === "admin" ? "/admin" : "/admin/login");
+          }}
+        />
+        <main>
+          <AdminPage
+            onClose={() => {
+              setAdminOpen(false);
+              navigateTo("/");
+            }}
+            currentUser={currentUser}
+          />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -186,8 +264,13 @@ function App() {
         setDrawerOpen={setDrawerOpen}
         setFilter={selectFilter}
         setMobileNavOpen={setMobileNavOpen}
-        goHome={() => setSelectedProduct(null)}
+        goHome={() => {
+          setSelectedProduct(null);
+          setAdminOpen(false);
+        }}
         focusSearch={() => document.querySelector(".search-box input")?.focus()}
+        isAdmin={currentUser?.role === "admin"}
+        openAdmin={() => setAdminOpen(true)}
       />
       <main>
         {!selectedProduct ? (
@@ -219,7 +302,7 @@ function App() {
         checkoutBusy={checkoutBusy}
         openAuth={() => setAuthOpen(true)}
       />
-      <AuthModal open={authOpen} setOpen={setAuthOpen} setStatus={setStatus} reloadCart={loadCart} />
+      <AuthModal open={authOpen} setOpen={setAuthOpen} setStatus={setStatus} reloadCart={loadCart} onSuccess={loadCurrentUser} />
       <MobileNav
         open={mobileNavOpen}
         setOpen={setMobileNavOpen}

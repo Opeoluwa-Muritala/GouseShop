@@ -33,3 +33,13 @@ async def admin_create_collection(data: CategoryCreate, session: AsyncSession = 
     await session.commit()
     await session.refresh(collection)
     return collection
+
+
+@router.delete("/admin/{slug}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+async def admin_delete_collection(slug: str, session: AsyncSession = Depends(get_session)):
+    existing = await session.execute(select(Collection).where(Collection.slug == slug))
+    collection = existing.scalar_one_or_none()
+    if collection is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
+    await session.delete(collection)
+    await session.commit()

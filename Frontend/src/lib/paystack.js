@@ -3,7 +3,7 @@ const PAYSTACK_INLINE_SRC = "https://js.paystack.co/v2/inline.js";
 let sdkPromise;
 
 export function paystackAccessCode(payment) {
-  return payment?.provider_response?.initialize?.data?.access_code;
+  return payment?.provider_access_code;
 }
 
 export function paystackCheckoutUrl(payment) {

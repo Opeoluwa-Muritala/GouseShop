@@ -1,40 +1,40 @@
-# GouseShop Backend
+# GouseShop
 
-FastAPI backend for GouseShop, with authentication, catalog, cart, orders, payments, Cloudinary product images, and deployment configuration for Render.
+GouseShop is a full-stack ecommerce application for fashion retail. It includes a React/Vite storefront, a FastAPI backend, admin catalog/order tooling, cart and order flows, Cloudinary product image uploads, Paystack and Flutterwave payment integrations, email workflows, Redis-backed rate limiting, and a Render Blueprint for deployment.
 
 ## Stack
 
-- FastAPI
-- SQLAlchemy async ORM
-- Alembic migrations
-- PostgreSQL in production
-- SQLite for local development
-- JWT authentication
-- Paystack payment initialization and verification
-- Flutterwave integration scaffolding
-- Cloudinary image upload
-- Optional Redis/Celery support
+- Frontend: React 19, Vite 8, lucide-react
+- Backend: FastAPI, SQLAlchemy async ORM, Alembic, Pydantic
+- Data: PostgreSQL in production, SQLite-friendly local defaults
+- Cache/rate limits: Redis or Upstash Redis REST
+- Payments: Paystack and Flutterwave
+- Media: Cloudinary
+- Deployment: Render Blueprint, optional Fly backend config
 
-## Project Structure
+## Repository Layout
 
 ```text
 GouseShop/
   Backend/
     app/
-      api/v1/          API routes
-      core/            settings, database, security, redis, rate limits
-      models/          SQLAlchemy models
-      schemas/         Pydantic schemas
-      services/        business logic and provider integrations
-      tasks/           Celery tasks
-    alembic/           database migrations
-    main.py            FastAPI app entrypoint
-    requirements.txt   Python dependencies
-  render.yaml          Render Blueprint
-  runtime.txt          Render Python runtime
+      api/v1/        API routes
+      core/          config, database, security, Redis, rate limiting
+      models/        SQLAlchemy models
+      schemas/       Pydantic schemas
+      services/      auth, catalog, order, payment, email, Cloudinary logic
+      tasks/         Celery task wiring
+    alembic/         migrations
+    tests/           backend tests
+    main.py          FastAPI app entrypoint
+  Frontend/
+    src/             React app, pages, components, API client
+    package.json     frontend dependencies and scripts
+  render.yaml        Render Blueprint
+  runtime.txt        Python runtime hint
 ```
 
-## Local Setup
+## Local Backend
 
 From `Backend`:
 
@@ -51,9 +51,43 @@ Health check:
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/health
 ```
 
-## Required Environment Variables
+API docs are disabled by default. For local development only, set:
 
-Create `Backend\.env` locally. On Render, enter secrets in the Dashboard when applying `render.yaml`.
+```env
+ENABLE_API_DOCS=true
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+## Local Frontend
+
+From `Frontend`:
+
+```powershell
+cd C:\Users\LENOVO\Desktop\GouseShop\Frontend
+npm ci
+npm run dev
+```
+
+Set `VITE_API_URL` if the backend is not running at the default:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000/api/v1
+```
+
+Production build:
+
+```powershell
+npm run build
+```
+
+## Environment Variables
+
+Copy `Backend\.env.example` to `Backend\.env` for local backend development. In Render, fill variables marked `sync: false` in the Dashboard.
 
 Core:
 
@@ -61,13 +95,36 @@ Core:
 APP_NAME=GouseShop Backend
 ENVIRONMENT=development
 DATABASE_URL=sqlite+aiosqlite:///./gouseshop.db
-JWT_SECRET=change-me
+JWT_SECRET=replace-with-a-long-random-secret
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=30
 PASSWORD_RESET_TOKEN_EXPIRE_MINUTES=30
 CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
-USE_FAKE_EXTERNAL_SERVICES=false
+CORS_ORIGIN_REGEX=
+ALLOWED_HOSTS=localhost,127.0.0.1,testserver
+ENABLE_API_DOCS=true
+SESSION_COOKIE_SECURE=false
+SESSION_COOKIE_SAMESITE=lax
 USE_FAKE_REDIS=true
+USE_FAKE_EXTERNAL_SERVICES=true
+```
+
+Admin bootstrap:
+
+```env
+ADMIN_BOOTSTRAP_EMAIL=owner@example.com
+ADMIN_BOOTSTRAP_PASSWORD=strongpass123
+```
+
+The first successful `/admin/login` with those credentials creates the bootstrap admin. In production, known default or weak bootstrap passwords are rejected.
+
+Redis:
+
+```env
+REDIS_URL=redis://localhost:6379/0
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+REDIS_KEY_PREFIX=gouseshop:
 ```
 
 Cloudinary:
@@ -80,200 +137,163 @@ CLOUDINARY_FOLDER=gouseshop
 CLOUDINARY_MAX_UPLOAD_BYTES=5242880
 ```
 
-Paystack:
+Payments:
 
 ```env
 PAYSTACK_SECRET_KEY=
 PAYSTACK_PUBLIC_KEY=
 PAYSTACK_WEBHOOK_SECRET=
-PAYMENT_CALLBACK_URL=http://localhost:3000/payment/callback
-```
-
-Flutterwave:
-
-```env
 FLUTTERWAVE_SECRET_KEY=
 FLUTTERWAVE_PUBLIC_KEY=
 FLUTTERWAVE_WEBHOOK_SECRET=
 FLUTTERWAVE_CLIENT_ID=
 FLUTTERWAVE_CLIENT_SECRET=
+PAYMENT_CALLBACK_URL=http://localhost:3000/payment/callback
 ```
 
 Email:
 
 ```env
 RESEND_API_KEY=
+EMAIL_API_URL=https://email-api-4ykn.onrender.com
 EMAIL_FROM=GouseShop <no-reply@gouseshop.local>
 EMAIL_REPLY_TO=
 ```
 
-## Authentication Test
+## Authentication And CSRF
 
-Login:
+The backend returns token JSON for API compatibility, but the browser app uses HttpOnly cookies:
+
+- `gouseshop_access`: access token, HttpOnly
+- `gouseshop_refresh`: refresh token, HttpOnly
+- `gouseshop_csrf`: readable CSRF token
+
+The frontend API client sends `credentials: "include"` and attaches `X-CSRF-Token` for state-changing requests. If you call protected POST/PATCH/DELETE endpoints manually using cookies, include the CSRF header.
+
+Bearer tokens are still accepted for direct API testing:
 
 ```powershell
-$token = (Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/auth/login" -Method Post -ContentType "application/json" -Body (@{email="user@example.com";password="password"} | ConvertTo-Json)).access_token
-```
+$login = Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/api/v1/auth/login" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body (@{email="user@example.com";password="secret123"} | ConvertTo-Json)
 
-Use the token:
+$token = $login.access_token
 
-```powershell
 Invoke-RestMethod `
-  -Uri "http://127.0.0.1:8000/api/v1/orders" `
+  -Uri "http://127.0.0.1:8000/api/v1/auth/me" `
   -Headers @{ Authorization = "Bearer $token" }
 ```
 
-## Image Upload Test
+## Admin
 
-Requires an admin user and an existing product slug.
+Set `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD`, then open:
 
-```powershell
-Invoke-RestMethod `
-  -Uri "http://127.0.0.1:8000/api/v1/products/admin/test-product/images" `
-  -Method Post `
-  -Headers @{ Authorization = "Bearer $token" } `
-  -Form @{
-    file = Get-Item "C:\path\to\image.jpg"
-    alt = "Product image"
-    sort_order = "0"
-    is_primary = "true"
-  }
+```text
+/admin/login
 ```
 
-The upload endpoint stores Cloudinary metadata in `product_images`.
+Admin capabilities include product creation/deletion, admin image upload, order listing, and order status updates. Admin image uploads are rate-limited, size-limited, and checked for basic image signatures before Cloudinary upload.
 
-## Payment Testing
+## Payments
 
-Paystack hosted checkout is supported through:
+Main endpoints:
 
 ```text
 POST /api/v1/payments/initiate
 GET  /api/v1/payments/verify/{reference}
+POST /api/v1/payments/webhook/paystack
+POST /api/v1/payments/webhook/flutterwave
+POST /api/v1/payments/refund
 ```
 
-Initiate Paystack:
+Payment hardening notes:
 
-```powershell
-$paystack = Invoke-RestMethod `
-  -Uri "http://127.0.0.1:8000/api/v1/payments/initiate" `
-  -Method Post `
-  -Headers @{ Authorization = "Bearer $token" } `
-  -ContentType "application/json" `
-  -Body '{"order_id":1,"provider":"paystack","country":"NG","currency":"NGN"}'
+- Users can verify only their own payment references; admins can verify any payment.
+- Public payment responses do not expose raw provider payloads.
+- Webhooks validate provider signatures before reconciling payment and order state.
+- Client-supplied currency/country tampering is rejected; order currency is server-owned.
 
-$paystack.provider_checkout_url
+## Render Deployment
+
+`render.yaml` defines:
+
+- Static frontend service using `npm ci && npm run build`
+- FastAPI backend service
+- Managed PostgreSQL database
+- Backend migrations before app startup
+- `/api/v1/health` health check
+
+Render steps:
+
+1. Push the repo to GitHub, GitLab, or Bitbucket.
+2. Create a new Render Blueprint.
+3. Select the repo and confirm `render.yaml`.
+4. Fill every secret or `sync: false` variable.
+5. Set `VITE_API_URL` on the frontend to the backend `/api/v1` URL.
+6. Set `PAYMENT_CALLBACK_URL` to the frontend payment callback route.
+7. Deploy and confirm `/api/v1/health`.
+
+Important production values:
+
+```env
+ENVIRONMENT=production
+ENABLE_API_DOCS=false
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAMESITE=none
+USE_FAKE_EXTERNAL_SERVICES=false
+USE_FAKE_REDIS=false
 ```
 
-Verify after checkout:
+Use a long random `JWT_SECRET`, explicit `CORS_ORIGINS`, explicit `ALLOWED_HOSTS`, real payment webhook secrets, and real Redis/Upstash credentials.
 
-```powershell
-Invoke-RestMethod `
-  -Uri "http://127.0.0.1:8000/api/v1/payments/verify/$($paystack.provider_reference)" `
-  -Headers @{ Authorization = "Bearer $token" }
-```
+## Tests
 
-Flutterwave note: the code can generate OAuth client-credentials tokens and attempt provider calls. Flutterwave v4 direct card charging requires customer creation, encrypted card/payment method creation, charge creation, possible PIN/3DS continuation, and webhook handling. Do not collect raw card data on this backend without a PCI-safe design.
-
-## Database Migrations
-
-Run locally:
+Smoke tests that do not reset the database:
 
 ```powershell
 cd Backend
-.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m pytest tests\test_smoke.py
 ```
 
-Render runs migrations automatically before starting Uvicorn:
+Full backend tests require dedicated online test resources. The test guard refuses to reset SQLite, any database whose name does not contain `test`, or Redis keys whose prefix does not start with `test:`.
 
-```bash
-python -m alembic upgrade head && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+Required test environment:
+
+```env
+DATABASE_URL=postgresql+asyncpg://.../gouseshop_test
+USE_FAKE_REDIS=false
+REDIS_KEY_PREFIX=test:
+JWT_SECRET=test-secret
+USE_FAKE_EXTERNAL_SERVICES=true
 ```
 
-## Tests
+Run:
 
 ```powershell
 cd Backend
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-## Render Deployment
+Frontend build check:
 
-This repository includes a Render Blueprint:
-
-```text
-render.yaml
+```powershell
+cd Frontend
+npm run build
 ```
 
-It creates:
+## Security Checklist
 
-- one FastAPI web service
-- one managed PostgreSQL database
-
-The web service:
-
-- installs `Backend/requirements.txt`
-- runs Alembic migrations
-- starts Uvicorn on Render's `$PORT`
-- checks `/api/v1/health`
-
-### Render Steps
-
-1. Push this repository to GitHub, GitLab, or Bitbucket.
-2. Open Render Dashboard.
-3. Create a new Blueprint.
-4. Select the repository.
-5. Confirm Render detects `render.yaml`.
-6. Fill every environment variable marked as secret.
-7. Apply the Blueprint.
-8. Wait for the deploy to become live.
-9. Open:
-
-```text
-https://YOUR_RENDER_SERVICE.onrender.com/api/v1/health
-```
-
-Expected:
-
-```json
-{"status":"ok"}
-```
-
-### Important Render Environment Values
-
-Set `CORS_ORIGINS` to your frontend domains as JSON:
-
-```env
-["https://your-frontend.com","http://localhost:3000"]
-```
-
-Set `PAYMENT_CALLBACK_URL` to the frontend route that handles payment returns:
-
-```env
-https://your-frontend.com/payment/callback
-```
-
-For testing without Redis on Render:
-
-```env
-USE_FAKE_REDIS=true
-```
-
-For production background jobs, provision Redis and set:
-
-```env
-USE_FAKE_REDIS=false
-REDIS_URL=your-render-redis-url
-```
-
-## Production Checklist
-
-- Use PostgreSQL, not SQLite.
-- Set strong `JWT_SECRET`.
-- Restrict `CORS_ORIGINS` to real frontend domains.
-- Set `USE_FAKE_EXTERNAL_SERVICES=false`.
-- Rotate any credentials that were shared during testing.
-- Configure payment webhook secrets before relying on webhooks.
-- Add Redis before enabling Celery workers.
-- Add error monitoring and structured logs.
-- Add database backups before production launch.
+- Use PostgreSQL in production.
+- Keep API docs disabled or protected in production.
+- Use a strong `JWT_SECRET`; production startup rejects weak/default secrets.
+- Restrict CORS and trusted hosts to real deployment domains.
+- Use HttpOnly auth cookies and CSRF headers for browser sessions.
+- Configure admin bootstrap through environment variables only.
+- Configure Paystack and Flutterwave webhook secrets before accepting live payments.
+- Keep provider response payloads out of public API responses.
+- Use Redis/Upstash for rate limiting and refresh-token revocation.
+- Rotate any credentials used during testing.
 - Run smoke tests after each deploy.
+- Add monitoring, structured logs, and database backups before launch.

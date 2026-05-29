@@ -22,7 +22,14 @@ class Settings(BaseSettings):
     password_reset_token_expire_minutes: int = 30
     cors_origins: list[str] = Field(default_factory=list)
     cors_origin_regex: str | None = None
+    allowed_hosts: list[str] = Field(default_factory=list)
+    enable_api_docs: bool = False
+    session_cookie_secure: bool | None = None
+    session_cookie_samesite: str | None = None
     use_fake_external_services: bool = True
+
+    admin_bootstrap_email: str | None = None
+    admin_bootstrap_password: str | None = None
 
     paystack_secret_key: str | None = None
     paystack_public_key: str | None = None
@@ -57,6 +64,16 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
+    @field_validator("allowed_hosts", mode="before")
+    @classmethod
+    def parse_allowed_hosts(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            if value.startswith("["):
+                return json.loads(value)
+            return [host.strip() for host in value.split(",") if host.strip()]
+        return value
+
     @property
     def allowed_cors_origins(self) -> list[str]:
         origins = set(self.cors_origins)
@@ -67,6 +84,40 @@ class Settings(BaseSettings):
             }
         )
         return sorted(origins)
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+    @property
+    def cookie_secure(self) -> bool:
+        if self.session_cookie_secure is not None:
+            return self.session_cookie_secure
+        return self.is_production
+
+    @property
+    def cookie_samesite(self) -> str:
+        if self.session_cookie_samesite:
+            return self.session_cookie_samesite.lower()
+        return "none" if self.cookie_secure else "lax"
+
+    @property
+    def trusted_hosts(self) -> list[str]:
+        hosts = set(self.allowed_hosts)
+        hosts.update({"localhost", "127.0.0.1", "testserver"})
+        if self.is_production:
+            hosts.update({"gouseshop.onrender.com", "gouseshop-1.onrender.com", "gouseshop-backend.onrender.com"})
+        return sorted(hosts)
+
+    def validate_production_settings(self) -> None:
+        if not self.is_production:
+            return
+        if self.jwt_secret in {"change-me", "change-me-in-production", "test-secret"} or len(self.jwt_secret) < 32:
+            raise RuntimeError("JWT_SECRET must be a strong production secret.")
+        if self.cors_origin_regex and self.cors_origin_regex.strip() in {".*", "^.*$", "*"}:
+            raise RuntimeError("CORS_ORIGIN_REGEX must not be permissive in production.")
+        if self.admin_bootstrap_password and self.admin_bootstrap_password in {"Iamanadmin", "password", "admin"}:
+            raise RuntimeError("ADMIN_BOOTSTRAP_PASSWORD must not use a default or weak value in production.")
 
     @property
     def sqlalchemy_database_url(self) -> str:

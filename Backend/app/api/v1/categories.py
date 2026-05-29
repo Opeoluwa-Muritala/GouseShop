@@ -33,3 +33,13 @@ async def admin_create_category(data: CategoryCreate, session: AsyncSession = De
     await session.commit()
     await session.refresh(category)
     return category
+
+
+@router.delete("/admin/{slug}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+async def admin_delete_category(slug: str, session: AsyncSession = Depends(get_session)):
+    existing = await session.execute(select(Category).where(Category.slug == slug))
+    category = existing.scalar_one_or_none()
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    await session.delete(category)
+    await session.commit()

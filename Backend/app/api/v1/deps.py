@@ -1,21 +1,33 @@
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Cookie, Depends, Header, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.core.security import decode_token
+from app.core.security import ACCESS_COOKIE_NAME, decode_token
 from app.models.enums import UserRole
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_session)) -> User:
+def _extract_token(credentials: HTTPAuthorizationCredentials | None, access_cookie: str | None) -> str | None:
+    if credentials and credentials.scheme.lower() == "bearer":
+        return credentials.credentials
+    return access_cookie
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    access_cookie: str | None = Cookie(None, alias=ACCESS_COOKIE_NAME),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    token = _extract_token(credentials, access_cookie)
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     payload = decode_token(token)
-    if payload is None or "sub" not in payload:
+    if payload is None or payload.get("type") != "access" or "sub" not in payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
     try:
         user_id = int(payload["sub"])
@@ -24,15 +36,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSe
     user = await session.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is inactive")
     return user
 
 
 async def get_optional_current_user(
-    token: str | None = Depends(optional_oauth2_scheme), session: AsyncSession = Depends(get_session)
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    access_cookie: str | None = Cookie(None, alias=ACCESS_COOKIE_NAME),
+    session: AsyncSession = Depends(get_session),
 ) -> Optional[User]:
+    token = _extract_token(credentials, access_cookie)
     if token is None:
         return None
-    return await get_current_user(token, session)
+    return await get_current_user(credentials, access_cookie, session)
 
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_session
+from app.core.rate_limit import rate_limit
 from app.schemas.product import ProductCreate, ProductImageRead, ProductList, ProductRead, ProductUpdate
 from app.services.product_service import (
     add_product_image,
@@ -15,6 +17,28 @@ from app.services.product_service import (
 from app.api.v1.deps import require_admin
 
 router = APIRouter()
+
+
+IMAGE_SIGNATURES = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/gif": (b"GIF87a", b"GIF89a"),
+    "image/webp": (b"RIFF",),
+}
+
+
+async def _read_limited_image(file: UploadFile) -> bytes:
+    limit = settings.cloudinary_max_upload_bytes
+    content = await file.read(limit + 1)
+    if len(content) > limit:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Image is too large")
+    content_type = file.content_type or ""
+    signatures = IMAGE_SIGNATURES.get(content_type)
+    if not signatures or not any(content.startswith(signature) for signature in signatures):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported or invalid image content")
+    if content_type == "image/webp" and content[8:12] != b"WEBP":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported or invalid image content")
+    return content
 
 
 @router.get("/", response_model=ProductList)
@@ -110,7 +134,20 @@ async def admin_update_product(slug: str, data: ProductUpdate, session: AsyncSes
     return await update_product(session, product, data)
 
 
-@router.post("/admin/{slug}/images", response_model=ProductImageRead, dependencies=[Depends(require_admin)])
+@router.delete("/admin/{slug}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+async def admin_delete_product(slug: str, session: AsyncSession = Depends(get_session)):
+    product = await get_product_by_slug(session, slug)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    await session.delete(product)
+    await session.commit()
+
+
+@router.post(
+    "/admin/{slug}/images",
+    response_model=ProductImageRead,
+    dependencies=[Depends(require_admin), Depends(rate_limit("admin_image_upload", 20, 60))],
+)
 async def admin_upload_product_image(
     slug: str,
     file: UploadFile = File(...),
@@ -122,7 +159,7 @@ async def admin_upload_product_image(
     product = await get_product_by_slug(session, slug)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    content = await file.read()
+    content = await _read_limited_image(file)
     return await add_product_image(
         session,
         product,

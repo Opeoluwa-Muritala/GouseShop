@@ -1,12 +1,17 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from fastapi import Response
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ACCESS_COOKIE_NAME = "gouseshop_access"
+REFRESH_COOKIE_NAME = "gouseshop_refresh"
+CSRF_COOKIE_NAME = "gouseshop_csrf"
 
 
 def hash_password(password: str) -> str:
@@ -44,3 +49,42 @@ def decode_token(token: str) -> Optional[dict]:
         return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     except JWTError:
         return None
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> str:
+    csrf_token = secrets.token_urlsafe(32)
+    cookie_options = {
+        "secure": settings.cookie_secure,
+        "samesite": settings.cookie_samesite,
+    }
+    response.set_cookie(
+        ACCESS_COOKIE_NAME,
+        access_token,
+        max_age=settings.access_token_expire_minutes * 60,
+        httponly=True,
+        **cookie_options,
+    )
+    response.set_cookie(
+        REFRESH_COOKIE_NAME,
+        refresh_token,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        httponly=True,
+        **cookie_options,
+    )
+    response.set_cookie(
+        CSRF_COOKIE_NAME,
+        csrf_token,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        httponly=False,
+        **cookie_options,
+    )
+    return csrf_token
+
+
+def clear_auth_cookies(response: Response) -> None:
+    cookie_options = {
+        "secure": settings.cookie_secure,
+        "samesite": settings.cookie_samesite,
+    }
+    for name in (ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, CSRF_COOKIE_NAME):
+        response.delete_cookie(name, **cookie_options)

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user
 from app.core.database import get_session
+from app.core.rate_limit import rate_limit
 from app.models.engagement import NewsletterSubscriber, Review, WaitlistEntry, WishlistItem
 from app.schemas.engagement import NewsletterCreate, ReviewCreate, ReviewRead, WaitlistCreate, WishlistCreate, WishlistRead
 
@@ -49,7 +50,7 @@ async def list_reviews(product_id: int, session: AsyncSession = Depends(get_sess
     return result.scalars().all()
 
 
-@router.post("/reviews", response_model=ReviewRead)
+@router.post("/reviews", response_model=ReviewRead, dependencies=[Depends(rate_limit("reviews_submit", 10, 60))])
 async def submit_review(data: ReviewCreate, session: AsyncSession = Depends(get_session), current_user=Depends(get_current_user)):
     review = Review(user_id=current_user.id, **data.model_dump())
     session.add(review)
@@ -62,7 +63,7 @@ async def submit_review(data: ReviewCreate, session: AsyncSession = Depends(get_
     return review
 
 
-@router.post("/waitlist")
+@router.post("/waitlist", dependencies=[Depends(rate_limit("waitlist_join", 10, 60))])
 async def join_waitlist(data: WaitlistCreate, session: AsyncSession = Depends(get_session)):
     entry = WaitlistEntry(**data.model_dump())
     session.add(entry)
@@ -73,7 +74,7 @@ async def join_waitlist(data: WaitlistCreate, session: AsyncSession = Depends(ge
     return {"detail": "Waitlist signup recorded"}
 
 
-@router.post("/newsletter")
+@router.post("/newsletter", dependencies=[Depends(rate_limit("newsletter_subscribe", 10, 60))])
 async def subscribe_newsletter(data: NewsletterCreate, session: AsyncSession = Depends(get_session)):
     subscriber = NewsletterSubscriber(email=data.email)
     session.add(subscriber)

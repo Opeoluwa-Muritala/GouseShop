@@ -1,5 +1,8 @@
 import asyncio
 
+import pytest
+
+from app.core.config import Settings
 from app.core.redis import InMemoryRedis
 
 
@@ -23,6 +26,7 @@ def test_health_guest_cart_and_redis(client):
     health = client.get("/api/v1/health")
     assert health.status_code == 200
     assert health.json() == {"status": "ok"}
+    assert health.headers["x-content-type-options"] == "nosniff"
 
     cart = client.get("/api/v1/cart/")
     assert cart.status_code == 400
@@ -55,3 +59,18 @@ def test_cors_preflight_rejects_unknown_origin(client):
     )
 
     assert response.status_code == 400
+
+
+def test_api_docs_are_disabled_by_default(client):
+    assert client.get("/openapi.json").status_code == 404
+    assert client.get("/docs").status_code == 404
+
+
+def test_production_config_rejects_weak_secret_and_permissive_cors():
+    weak = Settings(environment="production", jwt_secret="change-me-in-production", _env_file=None)
+    with pytest.raises(RuntimeError):
+        weak.validate_production_settings()
+
+    permissive = Settings(environment="production", jwt_secret="x" * 40, cors_origin_regex=".*", _env_file=None)
+    with pytest.raises(RuntimeError):
+        permissive.validate_production_settings()

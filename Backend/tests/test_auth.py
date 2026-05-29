@@ -12,6 +12,10 @@ from app.services.auth_service import build_email_verification_token
 pytestmark = pytest.mark.db
 
 
+def _csrf_headers(client) -> dict[str, str]:
+    return {"X-CSRF-Token": client.cookies.get("gouseshop_csrf")}
+
+
 async def _user_by_email(email: str) -> User:
     async with async_session() as session:
         result = await session.execute(select(User).where(User.email == email))
@@ -51,10 +55,18 @@ def test_auth_security_flows(client):
     assert "reset_token" not in reset.json()
     assert asyncio.run(_email_count("user@example.com")) == 2
 
-    access_refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": register.json()["access_token"]})
+    access_refresh = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": register.json()["access_token"]},
+        headers=_csrf_headers(client),
+    )
     assert access_refresh.status_code == 401
 
-    missing_user_refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": create_refresh_token("999")})
+    missing_user_refresh = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": create_refresh_token("999")},
+        headers=_csrf_headers(client),
+    )
     assert missing_user_refresh.status_code == 401
 
     asyncio.run(_set_user_flags("user@example.com", verified=True))
@@ -62,14 +74,18 @@ def test_auth_security_flows(client):
     assert login.status_code == 200
     tokens = login.json()
 
-    refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]}, headers=_csrf_headers(client))
     assert refresh.status_code == 200
 
     asyncio.run(_set_user_flags("user@example.com", active=False))
-    inactive_refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    inactive_refresh = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": tokens["refresh_token"]},
+        headers=_csrf_headers(client),
+    )
     assert inactive_refresh.status_code == 401
 
-    logout = client.post("/api/v1/auth/logout", json={"refresh_token": tokens["refresh_token"]})
+    logout = client.post("/api/v1/auth/logout", json={"refresh_token": tokens["refresh_token"]}, headers=_csrf_headers(client))
     assert logout.status_code == 200
     revoked_refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert revoked_refresh.status_code == 401

@@ -2,7 +2,7 @@ import { Loader2, User, X } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
 
-export function AuthModal({ open, setOpen, setStatus, reloadCart }) {
+export function AuthModal({ open, setOpen, setStatus, reloadCart, onSuccess }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,10 +16,10 @@ export function AuthModal({ open, setOpen, setStatus, reloadCart }) {
       const path = mode === "login" ? "/auth/login" : "/auth/register";
       const data = await api(path, { method: "POST", body: JSON.stringify({ email, password }) });
       if (data.access_token) {
-        localStorage.setItem("gouseshop_token", data.access_token);
         setStatus(mode === "register" ? "Account created. Your bag is saved." : "Signed in. Your bag is saved.");
         setOpen(false);
         reloadCart();
+        onSuccess?.();
       } else {
         setStatus("Account created. Sign in to continue.");
         setMode("login");

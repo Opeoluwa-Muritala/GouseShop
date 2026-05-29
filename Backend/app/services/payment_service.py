@@ -155,6 +155,53 @@ async def verify_payment(session: AsyncSession, reference: str) -> Payment | Non
     return payment
 
 
+async def apply_webhook_payment_update(
+    session: AsyncSession, provider: PaymentProvider, payload: dict
+) -> Payment | None:
+    reference: str | None = None
+    status_value: str | None = None
+    amount: int | None = None
+    currency: str | None = None
+
+    if provider == PaymentProvider.PAYSTACK:
+        data = payload.get("data") or {}
+        reference = data.get("reference")
+        status_value = data.get("status")
+        amount = int(data.get("amount") or 0) // 100
+        currency = str(data.get("currency") or "").upper()
+    elif provider == PaymentProvider.FLUTTERWAVE:
+        data = payload.get("data") or {}
+        reference = data.get("tx_ref")
+        status_value = data.get("status")
+        amount = int(float(data.get("amount") or 0))
+        currency = str(data.get("currency") or "").upper()
+
+    if not reference:
+        return None
+    payment = await get_payment_by_reference(session, reference)
+    if payment is None or payment.provider != provider:
+        return None
+
+    provider_response = {**(payment.provider_response or {}), "webhook": payload}
+    payment.provider_response = provider_response
+    successful = status_value in {"success", "successful"} and amount == payment.amount and currency == payment.currency.upper()
+    if not successful:
+        payment.status = PaymentStatus.FAILED
+        await session.commit()
+        await session.refresh(payment)
+        return payment
+
+    payment.status = PaymentStatus.PAID
+    payment.verified_at = datetime.now(timezone.utc)
+    order = await session.get(Order, payment.order_id)
+    if order:
+        order.status = OrderStatus.PAID
+        order.paid_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(payment)
+    return payment
+
+
 async def refund_payment(session: AsyncSession, reference: str, amount: int | None = None) -> Payment | None:
     payment = await get_payment_by_reference(session, reference)
     if payment is None:

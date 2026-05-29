@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: Frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: dist
     routes:
       - type: rewrite
@@ -45,6 +45,18 @@ services:
         value: "https://gouseshop.onrender.com,https://gouseshop-frontend.onrender.com,https://gouseshop-1.onrender.com"
       - key: CORS_ORIGIN_REGEX
         value: ""
+      - key: ALLOWED_HOSTS
+        value: "gouseshop-backend.onrender.com,gouseshop.onrender.com,gouseshop-1.onrender.com"
+      - key: ENABLE_API_DOCS
+        value: "false"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_SAMESITE
+        value: "none"
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        sync: false
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false
       - key: USE_FAKE_EXTERNAL_SERVICES
         value: "false"
       - key: USE_FAKE_REDIS

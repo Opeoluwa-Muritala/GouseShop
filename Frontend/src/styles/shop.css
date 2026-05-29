@@ -304,3 +304,132 @@
   min-height: 420px;
   object-fit: cover;
 }
+
+.admin-page {
+  padding: 40px 28px 80px;
+  background: #f7f4ef;
+  min-height: calc(100vh - 90px);
+}
+
+.admin-panel {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.admin-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  padding: 28px;
+  border-radius: 8px;
+}
+
+.auth-page {
+  min-height: calc(100vh - 78px);
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+  background: var(--surface);
+}
+
+.auth-card {
+  width: min(100%, 420px);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.08);
+}
+
+.admin-form {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-form label {
+  display: grid;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 12px 14px;
+  border-radius: 4px;
+}
+
+.admin-form textarea {
+  min-height: 100px;
+}
+
+.admin-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.admin-checkbox-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+.admin-table th,
+.admin-table td {
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.admin-table th {
+  background: #fbf7f0;
+}
+
+.admin-product-list p {
+  margin: 0;
+}
+
+.status-message {
+  margin-top: 22px;
+  color: var(--ink);
+}
+
+@media (min-width: 900px) {
+  .admin-grid {
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+}
+
+@media (min-width: 1200px) {
+  .admin-grid {
+    grid-template-columns: 1.1fr 0.9fr 0.9fr;
+  }
+}

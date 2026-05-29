@@ -33,3 +33,13 @@ async def admin_create_fabric(data: CategoryCreate, session: AsyncSession = Depe
     await session.commit()
     await session.refresh(fabric)
     return fabric
+
+
+@router.delete("/admin/{slug}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+async def admin_delete_fabric(slug: str, session: AsyncSession = Depends(get_session)):
+    existing = await session.execute(select(Fabric).where(Fabric.slug == slug))
+    fabric = existing.scalar_one_or_none()
+    if fabric is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fabric not found")
+    await session.delete(fabric)
+    await session.commit()

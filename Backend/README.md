@@ -1,117 +1,66 @@
 # GouseShop Backend
 
-FastAPI backend for the Fashion Store architecture.
+FastAPI backend for GouseShop ecommerce: auth, admin, catalog, carts, orders, payments, Cloudinary uploads, email workflows, Redis-backed rate limiting, and Alembic migrations.
 
-## First milestone
+For the full project guide, including frontend and Render deployment, see the root `README.md`.
 
-- Project scaffolding and API modules
-- Async SQLAlchemy connectivity, with SQLite-friendly local defaults
-- Auth with JWT tokens
-- Product, category, collection, fabric models and CRUD seams
-- Cart and order flows with reserved stock logic
-- Payment, wishlist, review, waitlist, newsletter tables and endpoints
-- Real Redis-backed rate limit and token revocation support
-- Alembic migrations
+## Run Locally
 
-## Run locally
-
-1. Copy `.env.example` to `.env`
+1. Copy `.env.example` to `.env`.
 2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
+   ```powershell
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
    ```
-3. Create the database and run migrations:
-   ```bash
-   alembic upgrade head
+3. Run migrations:
+   ```powershell
+   .\.venv\Scripts\python.exe -m alembic upgrade head
    ```
-4. Start the app:
-   ```bash
-   uvicorn main:app --reload
-   ```
-5. Open Swagger UI:
-   ```text
-   http://localhost:8000/docs
+4. Start the API:
+   ```powershell
+   .\.venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
    ```
 
-Configuration is read from environment variables. For a full run, provide PostgreSQL and Redis URLs plus the provider credentials listed below.
+Health check:
 
-## Required environment variables
+```text
+http://127.0.0.1:8000/api/v1/health
+```
 
-- `DATABASE_URL`: online PostgreSQL database URL, preferably `postgresql+asyncpg://...`.
-- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: Upstash Redis REST credentials.
-- `REDIS_URL`: standard Redis URL fallback when Upstash REST credentials are not set.
-- `USE_FAKE_REDIS=false`: required for real Redis-backed rate limits and refresh-token revocation.
-- `REDIS_KEY_PREFIX`: namespace for all app Redis keys, for example `gouseshop:`.
-- `JWT_SECRET`: strong random secret for signing JWTs.
-- `CORS_ORIGINS`: comma-separated frontend origins allowed to call the API.
-- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: required for real product image uploads.
-- `EMAIL_API_URL`: email delivery API, default `https://email-api-4ykn.onrender.com`.
+Docs are disabled unless `ENABLE_API_DOCS=true`.
 
-## Optional integration environment variables
+## Important Configuration
 
+- `JWT_SECRET`: strong signing secret. Production rejects weak/default values.
+- `CORS_ORIGINS`: explicit frontend origins.
+- `ALLOWED_HOSTS`: trusted hostnames for `TrustedHostMiddleware`.
+- `SESSION_COOKIE_SECURE` and `SESSION_COOKIE_SAMESITE`: auth cookie policy.
+- `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD`: first admin bootstrap credentials.
+- `USE_FAKE_REDIS=false` plus Redis/Upstash credentials: required for real rate limits and refresh-token revocation.
 - `USE_FAKE_EXTERNAL_SERVICES=false`: required for real payment/email/storage integrations.
-- `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`: Paystack checkout, verification, webhook, and refund support.
-- `FLUTTERWAVE_SECRET_KEY` or `FLUTTERWAVE_CLIENT_ID` plus `FLUTTERWAVE_CLIENT_SECRET`, plus `FLUTTERWAVE_PUBLIC_KEY` and `FLUTTERWAVE_WEBHOOK_SECRET`: Flutterwave checkout, verification, webhook, and refund support.
-- `EMAIL_FROM` and optional `EMAIL_REPLY_TO`: reserved for email metadata when the provider supports it.
+- Payment webhook secrets: required before relying on live provider webhooks.
 
-## Redis with Upstash
+## Auth Model
 
-Use Upstash by setting:
+The API still returns token JSON for API clients, but the browser app uses:
 
-```bash
-USE_FAKE_REDIS=false
-UPSTASH_REDIS_REST_URL=https://your-upstash-endpoint.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your-token
-REDIS_KEY_PREFIX=gouseshop:
+- HttpOnly access and refresh cookies
+- A readable `gouseshop_csrf` cookie
+- `X-CSRF-Token` on state-changing cookie-authenticated requests
+
+Bearer tokens are accepted for direct API testing.
+
+## Tests
+
+Smoke tests:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\test_smoke.py
 ```
 
-When Upstash variables are present, the app uses the async Upstash REST client. If they are absent, it falls back to `REDIS_URL` with `redis.asyncio`.
+Full tests require a dedicated online test database whose name contains `test`, Redis with `REDIS_KEY_PREFIX=test:`, and `USE_FAKE_REDIS=false`.
 
-## Complete run checklist
-
-- Set all required environment variables.
-- Run migrations before starting the API:
-  ```bash
-  alembic upgrade head
-  ```
-- Optional worker for async jobs:
-  ```bash
-  celery -A app.tasks.celery_app.celery_app worker --loglevel=info
-  ```
-
-## Run tests with the online test database
-
-Tests use the configured online `DATABASE_URL` and `REDIS_URL`; they do not create an offline SQLite database. Use dedicated test resources only.
-
-Required:
-
-- `DATABASE_URL`: must point to an online database whose database name contains `test`.
-- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, or `REDIS_URL`: must point to a Redis instance safe for tests.
-- `USE_FAKE_REDIS=false`: required for DB tests.
-- `REDIS_KEY_PREFIX`: must start with `test:` so cleanup only deletes test keys.
-- Migrations already applied to that test database with `alembic upgrade head`.
-- `JWT_SECRET=test-secret` or another test secret.
-- `USE_FAKE_EXTERNAL_SERVICES=true` is recommended for fast, isolated tests.
-
-Run:
-
-```bash
-pytest -q
+```powershell
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-The test guard refuses to run cleanup against SQLite, a database whose name does not contain `test`, or a Redis prefix that does not start with `test:`.
-
-## Production notes
-
-- Set `DATABASE_URL` to PostgreSQL, for example `postgresql+asyncpg://...`.
-- Set `USE_FAKE_REDIS=false` and provide `REDIS_URL`.
-- Set `USE_FAKE_EXTERNAL_SERVICES=false` when provider credentials are configured.
-- Start a Celery worker with:
-  ```bash
-  celery -A app.tasks.celery_app.celery_app worker --loglevel=info
-  ```
-
-## Notes
-
-- This milestone contains the core architecture and first runnable product/order/payment seams.
-- Real provider API calls and deeper admin tooling are next hardening steps.
+The test guard intentionally refuses to reset unsafe database or Redis targets.

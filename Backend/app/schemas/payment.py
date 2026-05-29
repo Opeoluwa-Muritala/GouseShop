@@ -21,6 +21,9 @@ class PaymentRead(BaseModel):
     amount: int
     currency: str
     status: str
+
+
+class PaymentAdminRead(PaymentRead):
     provider_response: Optional[dict] = None
 
 
